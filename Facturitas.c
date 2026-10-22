@@ -18,7 +18,7 @@ int main()
         pantallaCarga();
         limpiarPantalla();
         printf("***********************\n");
-        printf("        FERIAPP        \n");
+        printf("        BALANCIN        \n");
         printf("***********************\n");
         printf("\n");
 

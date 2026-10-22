@@ -4,10 +4,14 @@
 /* ============================================================
 *  TAMAÑOS DE CAMPOS DE TEXTO
 * ============================================================ */
+#define MAX_USUARIOS 50
 #define LARGO_USUARIO   30
 #define LARGO_CLAVE     30
 #define LARGO_NOMBRE    60
 #define LARGO_DESC      80
+#define PERMI_GESTOR 2
+#define PERMI_ADMIN 1
+
  
 /* ============================================================
 *  ROLES DE USUARIO
@@ -25,6 +29,7 @@ typedef struct {
     char       claveHash[LARGO_CLAVE];        /* hash, NUNCA texto plano */
     RolUsuario rol;
     int        activo;                        /* 1 = activo, 0 = baja */
+    int permi;
 } Usuario;
  
 /* ============================================================
@@ -101,4 +106,4 @@ typedef struct {
     float subtotalLinea;           /* cantidad * precioUnitario */
 } DetalleFactura;
  
-#endif /* ESTRUCTURAS_H */
+#endif /*ESTRUCTURAS_H*/

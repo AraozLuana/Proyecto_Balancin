@@ -18,6 +18,7 @@
 #define CLAVE_ADMIN "admin123"
 #define MAXIMO_INTENTOS 4
 #define CANCELAR (-2)
+#define OPCION_CORTE 4
 
 // Resultados de validarLogin
 #define CONTRA_INCORRECTA 0
@@ -77,7 +78,7 @@ int validarLogin(Usuario usuarios[], int cantidadUsuarios, char nombreIngresado[
         return USUARIO_NO_ENCONTRADO;
     }
 
-    if (strcmp(usuarios[posicion].clave, claveIngresada) == 0)
+    if (strcmp(usuarios[posicion].claveHash, claveIngresada) == 0)
     {
         return usuarios[posicion].permi;
     }
@@ -102,7 +103,7 @@ int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo
     }
 
     strcpy(usuarios[*cantidadUsuarios].nombreUsuario, nombreNuevo);
-    strcpy(usuarios[*cantidadUsuarios].clave, claveNueva);
+    strcpy(usuarios[*cantidadUsuarios].claveHash, claveNueva);
     usuarios[*cantidadUsuarios].permi = permiNuevo;
     (*cantidadUsuarios)++;
     return EXITO;
@@ -227,29 +228,45 @@ void MenuUsuario()
             pausa();
             break;
         case 3:
-            printf("\nBUSQUEDA DE FACTURAS A DESARROLLAR\n");
+            printf("\nSECCION PRODUCTOS");
+            printf("1. Ver listado de productos\n");
+            printf("2. Agregar producto nuevo\n");
+            printf("3. Ver listado de materia prima\n");
+            printf("4. Agregar materia prima\n");
+            printf("5. Eliminar materia prima\n");
+            printf("6. Volver\n");
+            leerEntero("Seleccione una opción: ", &op);
+            switch (op)
+            {
+            case 1:
+                printf("Desarrollar ver listado de productos\n");
+                break;
+            case 2:
+                printf("Desarrollar agregar producto nuevo\n");
+                break;
+            case 3:
+                printf("Desarrollar ver listado de materia prima\n");
+                break;
+            case 4:
+                printf("Desarrollar agregar materia prima\n");
+                break;
+            case 5:
+                printf("Desarrollar eliminar materia prima\n");
+                break;
+            case 6:
+                printf("Volviendo....");
+            
+            default:
+                printf("Error: Fuera de rango. Reintente.\n");
+                break;
+            }
             pausa();
-            break;
-        case 4:
-            printf("\nCANTIDAD DE CLIENTES POR ZONA A DESARROLLAR\n");
-            pausa();
-            break;
-        case 5:
-            printf("\nVER PRODUCTO ESTRELLA A DESARROLLAR\n");
-            pausa();
-            break;
-        case 6:
-            printf("\nVER CLIENTE ESTRELLA A DESARROLLAR\n");
-            pausa();
-            break;
-        case 7:
-            printf("\nVolviendo...\n");
             break;
         default:
             printf("Error: Fuera de rango. Reintente.\n");
             break;
         }
-    } while (op != 7);
+    } while (op != OPCION_CORTE);
 }
 
 // *********************************************************************************
