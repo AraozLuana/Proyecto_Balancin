@@ -1,0 +1,468 @@
+#ifndef FACTUFUNCIONES_H_
+#define FACTUFUNCIONES_H_
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
+#include <string.h>
+#include <stdbool.h>
+#include "Estructuras.h"
+#include "utiles_Proyecto.h"
+
+#ifdef _WIN32
+#include <conio.h>
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
+#define CLAVE_ADMIN "admin123"
+#define MAXIMO_INTENTOS 4
+#define CANCELAR (-2)
+
+// Resultados de validarLogin
+#define CONTRA_INCORRECTA 0
+#define USUARIO_NO_ENCONTRADO (-1)
+
+// Resultados de registrarUsuario
+#define EXITO 1
+#define USUARIO_EXISTE 0
+#define SIN_ESPACIO (-1)
+
+// *********************************************************************************
+// PROTOTIPOS
+// *********************************************************************************
+int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[]);
+int validarLogin(Usuario usuarios[], int cantidadUsuarios, char nombreIngresado[], char claveIngresada[]);
+int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo[], char claveNueva[], int permiNuevo);
+int iniciarSesion();
+int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios);
+bool LogeoGestor(Usuario usuarios[], int cantidadUsuarios);
+void MenuUsuario();
+void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios);
+void AltaGestor(Usuario usuarios[], int *cantidadUsuarios);
+void pantallaCarga();
+
+// *********************************************************************************
+// Recorre el arreglo USUARIOS buscando un nombre que coincida con el
+// que le pasás, y devuelve la posición donde lo encontró (o -1)
+// *********************************************************************************
+int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[])
+{
+    int i = 0;
+    int posicionEncontrada = (-1);
+
+    while (i < cantidadUsuarios && posicionEncontrada == (-1))
+    {
+        if (strcmp(usuarios[i].nombreUsuario, nombreBuscado) == 0)
+        {
+            posicionEncontrada = i;
+        }
+        i++;
+    }
+
+    return posicionEncontrada;
+}
+
+// *********************************************************************************
+// Usa buscarUsuario por dentro y, si lo encuentra, compara la contraseña.
+// Devuelve el permi de la cuenta (PERMI_ADMIN o PERMI_GESTOR) si el login fue
+// exitoso, USUARIO_NO_ENCONTRADO (-1) o CONTRA_INCORRECTA (0) en caso contrario.
+// *********************************************************************************
+int validarLogin(Usuario usuarios[], int cantidadUsuarios, char nombreIngresado[], char claveIngresada[])
+{
+    int posicion = buscarUsuario(usuarios, cantidadUsuarios, nombreIngresado);
+
+    if (posicion == USUARIO_NO_ENCONTRADO)
+    {
+        return USUARIO_NO_ENCONTRADO;
+    }
+
+    if (strcmp(usuarios[posicion].clave, claveIngresada) == 0)
+    {
+        return usuarios[posicion].permi;
+    }
+
+    return CONTRA_INCORRECTA;
+}
+
+// *********************************************************************************
+// Registra un usuario nuevo y actualiza la cantidad de usuarios
+// Devuelve EXITO, USUARIO_EXISTE o SIN_ESPACIO
+// *********************************************************************************
+int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo[], char claveNueva[], int permiNuevo)
+{
+    if (*cantidadUsuarios >= MAX_USUARIOS)
+    {
+        return SIN_ESPACIO;
+    }
+
+    if (buscarUsuario(usuarios, *cantidadUsuarios, nombreNuevo) != (-1))
+    {
+        return USUARIO_EXISTE;
+    }
+
+    strcpy(usuarios[*cantidadUsuarios].nombreUsuario, nombreNuevo);
+    strcpy(usuarios[*cantidadUsuarios].clave, claveNueva);
+    usuarios[*cantidadUsuarios].permi = permiNuevo;
+    (*cantidadUsuarios)++;
+    return EXITO;
+}
+
+// *********************************************************************************
+// Selección de rol. Devuelve PERMI_ADMIN, PERMI_GESTOR o CANCELAR (salir)
+// *********************************************************************************
+int iniciarSesion()
+{
+    int op = 0;
+
+    do
+    {
+        printf("Seleccione su Usuario:\n");
+        printf("1- Administrador\n");
+        printf("2- Gestor\n");
+        printf("3- Salir\n");
+        leerEntero("Opción: ", &op);
+
+        if (op < 1 || op > 3)
+        {
+            limpiarPantalla();
+            printf("Opción no válida. Inténtelo nuevamente.\n\n");
+        }
+    } while (op < 1 || op > 3);
+
+    if (op == 1)
+    {
+        return PERMI_ADMIN;
+    }
+    if (op == 2)
+    {
+        return PERMI_GESTOR;
+    }
+    return CANCELAR;
+}
+
+// *********************************************************************************
+// MENÚ GESTOR
+// *********************************************************************************
+void MenuUsuario()
+{
+    int op = 0;
+    printf("----Bienvenide Gestor----\n");
+    do
+    {
+        printf("\n");
+        printf("1-Registrar Factura/s\n");
+        printf("2-Eliminar Factura/s\n");
+        printf("3-Buscar Factura/s\n");
+        printf("4-Cantidad de clientes por zona\n");
+        printf("5-Ver producto estrella\n");
+        printf("6-Ver cliente estrella\n");
+        printf("7-Volver\n");
+        leerEntero("Seleccione una opción: ", &op);
+        switch (op)
+        {
+        case 1:
+            printf("\nREGISTRO DE FACTURAS A DESARROLLAR\n");
+            registrarFactura();
+            pausa();
+            break;
+        case 2:
+            printf("\nELIMINACIÓN DE FACTURAS A DESARROLLAR\n");
+            pausa();
+            break;
+        case 3:
+            printf("\nBUSQUEDA DE FACTURAS A DESARROLLAR\n");
+            pausa();
+            break;
+        case 4:
+            printf("\nCANTIDAD DE CLIENTES POR ZONA A DESARROLLAR\n");
+            pausa();
+            break;
+        case 5:
+            printf("\nVER PRODUCTO ESTRELLA A DESARROLLAR\n");
+            pausa();
+            break;
+        case 6:
+            printf("\nVER CLIENTE ESTRELLA A DESARROLLAR\n");
+            pausa();
+            break;
+        case 7:
+            printf("\nVolviendo...\n");
+            break;
+        default:
+            printf("Error: Fuera de rango. Reintente.\n");
+            break;
+        }
+    } while (op != 7);
+}
+
+// *********************************************************************************
+// Alta Gestor
+// Usa buffers propios: antes pisaba la variable "clave" de LogeoAdmin con la
+// contraseña del gestor, y eso rompía la condición del ciclo de login.
+// *********************************************************************************
+void AltaGestor(Usuario usuarios[], int *cantidadUsuarios)
+{
+    char nombre[LARGO_USUARIO];
+    char clave[LARGO_CLAVE];
+    int registroResuelto = 0;
+
+    printf("**********Registrar Gestor**********\n\n");
+    do
+    {
+        leerCadena(nombre, LARGO_USUARIO, "Nombre de gestor (-1 para salir): ");
+        if (strcmp(nombre, "-1") == 0)
+        {
+            registroResuelto = 1;
+        }
+        else if (nombre[0] == '\0')
+        {
+            printf("El nombre no puede estar vacío.\n");
+        }
+        else
+        {
+            leerCadena(clave, LARGO_CLAVE, "Contraseña (-1 para salir): ");
+            if (strcmp(clave, "-1") == 0)
+            {
+                registroResuelto = 1;
+            }
+            else if (clave[0] == '\0')
+            {
+                printf("La contraseña no puede estar vacía.\n");
+            }
+            else
+            {
+                int resultado = registrarUsuario(usuarios, cantidadUsuarios, nombre, clave, PERMI_GESTOR);
+                if (resultado == SIN_ESPACIO)
+                {
+                    printf("ERROR: sin espacio para mas usuarios\n");
+                    registroResuelto = 1;
+                }
+                else if (resultado == USUARIO_EXISTE)
+                {
+                    printf("Usuario ya existente, reintente\n");
+                }
+                else
+                {
+                    printf("\n¡Registro exitoso!\n");
+                    registroResuelto = 1;
+                }
+            }
+        }
+    } while (!registroResuelto);
+    pausa();
+}
+
+void BajaGestor(Usuario usuarios[], int *cantidadUsuarios)
+{
+    printf("**********Dar de baja un Gestor**********\n\n");
+    char nombre[LARGO_USUARIO];
+    leerCadena(nombre, LARGO_USUARIO, "Ingrese el nombre del gestor a dar de baja (-1 para salir): ");
+    if (strcmp(nombre, "-1") == 0)
+    {
+        printf("Operación cancelada.\n");
+        pausa();
+    }
+    else if(strcmp(nombre, "admin") == 0)
+    {
+        printf("No se puede dar de baja al administrador.\n");
+        pausa();
+    }
+    else
+    {
+        int posicion = buscarUsuario(usuarios, *cantidadUsuarios, nombre);
+        if (posicion == -1)
+        {
+            printf("Gestor no encontrado.\n");
+            pausa();
+        }
+        else
+        {
+            // Mover todos los usuarios posteriores una posición hacia atrás
+            for (int i = posicion; i < *cantidadUsuarios - 1; i++)
+            {
+                usuarios[i] = usuarios[i + 1];
+            }
+            (*cantidadUsuarios)--;
+            printf("Gestor dado de baja exitosamente.\n");
+            pausa();
+        }
+    }
+
+}
+// *********************************************************************************
+// MENÚ ADMIN
+// *********************************************************************************
+void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios)
+{
+    int op = 0;
+    do
+    {
+        limpiarPantalla();
+        printf("---- Menu de Administrador ----\n");
+        printf("1-Ver estadisticas generales\n");
+        printf("2-Dar de alta a un gestor\n");
+        printf("3-Dar de baja a un gestor\n");
+        printf("4-Volver\n");
+        leerEntero("Seleccione una opción: ", &op);
+        switch (op)
+        {
+        case 1:
+            printf("\nVISTA DE ESTADISTICAS A DESARROLLAR.\n");
+            pausa();
+            break;
+        case 2:
+            limpiarPantalla();
+            AltaGestor(usuarios, cantidadUsuarios);
+            break;
+        case 3:
+            limpiarPantalla();
+            BajaGestor(usuarios, cantidadUsuarios);
+            pausa();
+            break;
+        case 4:
+            printf("\nVolviendo...\n");
+            break;
+        default:
+            printf("\nError: Fuera de rango. Reintente.\n");
+            pausa(); // sin esto el limpiarPantalla() del ciclo borra el mensaje
+            break;
+        }
+    } while (op != 4);
+}
+
+// *********************************************************************************
+// LOGUEO ADMIN
+// Devuelve CANCELAR si se agotaron los intentos (cierra el programa),
+// 0 en cualquier otro caso (vuelve a la pantalla de selección de rol).
+// *********************************************************************************
+int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios)
+{
+    int intentos = MAXIMO_INTENTOS;
+    char clave[LARGO_CLAVE];
+
+    limpiarPantalla();
+
+    while (intentos > 0)
+    {
+        leerCadena(clave, LARGO_CLAVE, "Ingrese la clave de administrador (-1 para volver): ");
+
+        if (strcmp(clave, "-1") == 0)
+        {
+            return 0;
+        }
+
+        if (strcmp(clave, CLAVE_ADMIN) == 0)
+        {
+            limpiarPantalla();
+            MenuAdmin(usuarios, cantidadUsuarios);
+            return 0;
+        }
+
+        intentos--;
+        if (intentos > 0)
+        {
+            printf("Clave incorrecta. Intentos disponibles: %d\n", intentos);
+        }
+    }
+
+    limpiarPantalla();
+    printf("Clave incorrecta. Sin intentos disponibles.\n\n");
+    printf("Saliendo del programa...\n");
+    retardo2(0.2);
+    return CANCELAR;
+}
+
+// *********************************************************************************
+// LOGUEO GESTOR
+// Valida usuario y contraseña contra el arreglo de usuarios (usa validarLogin).
+// Devuelve true si el login fue exitoso.
+// *********************************************************************************
+bool LogeoGestor(Usuario usuarios[], int cantidadUsuarios)
+{
+    char nombre[LARGO_USUARIO];
+    char clave[LARGO_CLAVE];
+    int intentos = MAXIMO_INTENTOS;
+
+    if (cantidadUsuarios == 0)
+    {
+        printf("\nNo hay gestores registrados. Pida al administrador que cree uno.\n");
+        pausa();
+        return false;
+    }
+
+    while (intentos > 0)
+    {
+        leerCadena(nombre, LARGO_USUARIO, "Usuario (-1 para volver): ");
+        if (strcmp(nombre, "-1") == 0)
+        {
+            return false;
+        }
+        leerCadena(clave, LARGO_CLAVE, "Contraseña: ");
+
+        if (validarLogin(usuarios, cantidadUsuarios, nombre, clave) == PERMI_GESTOR)
+        {
+            return true;
+        }
+
+        intentos--;
+        if (intentos > 0)
+        {
+            printf("Usuario o contraseña incorrectos. Intentos disponibles: %d\n", intentos);
+        }
+    }
+
+    printf("Sin intentos disponibles.\n");
+    pausa();
+    return false;
+}
+
+void mostrar_pose1() 
+{
+    printf("      /\\_/\\\n");
+    printf("     ( o.o )\n");
+    printf("      > ^ <\n");
+    printf("     /     \\\n");
+    printf("    |       |\n");
+    printf("    |  | |  |\n");
+    printf("    |__|_|__|\n");
+    printf("     ||   ||\n");
+    printf("     ||   ||\n");
+    printf("     ()   ()\n");
+}
+
+// Pose 2: Brazos arriba (saludando o moviéndose)
+void mostrar_pose2() //FIGURA PRUEBA
+{
+    printf("     _\\_/_ \n");
+    printf("    ( o.o )\n");
+    printf("      > ^ <\n");
+    printf("     /     \\\n");
+    printf("    |       |\n");
+    printf("    |  | |  |\n");
+    printf("    |__|_|__|\n");
+    printf("     ||   ||\n");
+    printf("     ||   ||\n");
+    printf("     ()   ()\n");
+}
+void pantallaCarga()
+{
+    int i = 0;
+
+    for (i = 0; i < 3; i++)
+    {
+        limpiarPantalla();
+        mostrar_pose1();
+        retardo2(0.2);
+        limpiarPantalla();
+        mostrar_pose2();
+        retardo2(0.2);
+    }
+}
+
+void registrarFactura()
+{
+    
+}
+
+#endif /* FACTUFUNCIONES_H_ */
