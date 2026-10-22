@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include "Estructuras.h"
 #include "utiles_Proyecto.h"
-
+ 
 #ifdef _WIN32
 #include <conio.h>
 #include <windows.h>
@@ -15,10 +15,18 @@
 #include <unistd.h>
 #endif
 
+/* Constantes para evitar magic numbers en cases y funciones varias */
+#define op1 1
+#define op2 2
+#define op3 3
+#define op4 4
+#define op5 5
+#define op6 6
+
 #define CLAVE_ADMIN "admin123"
 #define MAXIMO_INTENTOS 4
 #define CANCELAR (-2)
-#define OPCION_CORTE 4
+#define SALIR 0
 
 // Resultados de validarLogin
 #define CONTRA_INCORRECTA 0
@@ -63,7 +71,7 @@ int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[]
 
     return posicionEncontrada;
 }
-
+ 
 // *********************************************************************************
 // Usa buscarUsuario por dentro y, si lo encuentra, compara la contraseña.
 // Devuelve el permi de la cuenta (PERMI_ADMIN o PERMI_GESTOR) si el login fue
@@ -124,18 +132,18 @@ int iniciarSesion()
         printf("3- Salir\n");
         leerEntero("Opción: ", &op);
 
-        if (op < 1 || op > 3)
+        if (op < op1 || op > op3)
         {
             limpiarPantalla();
             printf("Opción no válida. Inténtelo nuevamente.\n\n");
         }
-    } while (op < 1 || op > 3);
+    } while (op < op1 || op > op3);
 
-    if (op == 1)
+    if (op == op1)
     {
         return PERMI_ADMIN;
     }
-    if (op == 2)
+    if (op == op2)
     {
         return PERMI_GESTOR;
     }
@@ -162,33 +170,33 @@ void MenuUsuario()
         printf("El articulo más vendido es %s\t\t", articuloMasVendido.descripcion);
         printf("El mejor cliente hasta ahora es %s\t\t", mejorCliente.datos.nombreYApellido);
         printf("Ventas del mes: %.2f\n", ventasDelMes);
-        printf("4-Volver\n");
+        printf("0-Volver\n");
         leerEntero("Seleccione una opción: ", &op);
         switch (op)
         {
-        case 1:
+        case op1:
             printf("\nSECCION FACTURAS\n");
             printf("\n");
             printf("1. Generar nueva factura\n");
             printf("2. Ver listado de facturas\n");
             printf("3. Eliminar factura de la base de datos\n");
-            printf("4-Volver\n");
+            printf("0-Volver\n");
             leerEntero("Seleccione una opción: ", &op);
             switch (op)
             {
-            case 1:
+            case op1:
                 printf("CREAR FUNCION GENERAR NUEVA FACTURA");
                 pausa();
                 break;
-            case 2:
+            case op2:
                 printf("CREAR FUNCION VER LISTADO DE FACTURAS");
                 pausa();
                 break;
-            case 3:
+            case op3:
                 printf("CREAR FUNCION ELIMINAR FACTURA DE LA BD");
                 pausa();
                 break;
-            case 4:
+            case SALIR:
                 printf("\nVolviendo...\n");
                 break;
                 
@@ -198,26 +206,26 @@ void MenuUsuario()
             }
             pausa();
             break;
-        case 2:
+        case op2:
             printf("\nSECCION ESTADISTICAS\n");
             printf("\n");
             printf("1. Ver producto estrella\n");
             printf("2. Ver mejor cliente\n");
             printf("3. Generar estadisticas generales\n");
-            printf("4-Volver\n");
+            printf("0-Volver\n");
             leerEntero("Seleccione una opción: ", &op);
             switch (op)
             {
-            case 1:
+            case op1:
                 printf("Desarrollar ver producto estrella\n");
                 break;
-            case 2:
+            case op2:
                 printf("Desarrollar ver mejor cliente\n");
                 break;
-            case 3:
+            case op3:
                 printf("Desarrollar generar estadisticas generales\n");
                 break;
-            case 4:
+            case SALIR:
                 printf("Volviendo\n");
                 break;
             
@@ -227,7 +235,7 @@ void MenuUsuario()
             }
             pausa();
             break;
-        case 3:
+        case op3:
             printf("\nSECCION PRODUCTOS");
             printf("1. Ver listado de productos\n");
             printf("2. Agregar producto nuevo\n");
@@ -238,22 +246,22 @@ void MenuUsuario()
             leerEntero("Seleccione una opción: ", &op);
             switch (op)
             {
-            case 1:
+            case op1:
                 printf("Desarrollar ver listado de productos\n");
                 break;
-            case 2:
+            case op2:
                 printf("Desarrollar agregar producto nuevo\n");
                 break;
-            case 3:
+            case op3:
                 printf("Desarrollar ver listado de materia prima\n");
                 break;
-            case 4:
+            case op4:
                 printf("Desarrollar agregar materia prima\n");
                 break;
-            case 5:
+            case op5:
                 printf("Desarrollar eliminar materia prima\n");
                 break;
-            case 6:
+            case SALIR:
                 printf("Volviendo....");
             
             default:
@@ -266,7 +274,7 @@ void MenuUsuario()
             printf("Error: Fuera de rango. Reintente.\n");
             break;
         }
-    } while (op != OPCION_CORTE);
+    } while (op != SALIR);
 }
 
 // *********************************************************************************
@@ -278,7 +286,7 @@ void AltaGestor(Usuario usuarios[], int *cantidadUsuarios)
 {
     char nombre[LARGO_USUARIO];
     char clave[LARGO_CLAVE];
-    int registroResuelto = 0;
+    bool registroResuelto = false;
 
     printf("**********Registrar Gestor**********\n\n");
     do
@@ -286,7 +294,7 @@ void AltaGestor(Usuario usuarios[], int *cantidadUsuarios)
         leerCadena(nombre, LARGO_USUARIO, "Nombre de gestor (-1 para salir): ");
         if (strcmp(nombre, "-1") == 0)
         {
-            registroResuelto = 1;
+            registroResuelto = true;
         }
         else if (nombre[0] == '\0')
         {
@@ -297,7 +305,7 @@ void AltaGestor(Usuario usuarios[], int *cantidadUsuarios)
             leerCadena(clave, LARGO_CLAVE, "Contraseña (-1 para salir): ");
             if (strcmp(clave, "-1") == 0)
             {
-                registroResuelto = 1;
+                registroResuelto = true;
             }
             else if (clave[0] == '\0')
             {
@@ -309,7 +317,7 @@ void AltaGestor(Usuario usuarios[], int *cantidadUsuarios)
                 if (resultado == SIN_ESPACIO)
                 {
                     printf("ERROR: sin espacio para mas usuarios\n");
-                    registroResuelto = 1;
+                    registroResuelto = true;
                 }
                 else if (resultado == USUARIO_EXISTE)
                 {
@@ -318,7 +326,7 @@ void AltaGestor(Usuario usuarios[], int *cantidadUsuarios)
                 else
                 {
                     printf("\n¡Registro exitoso!\n");
-                    registroResuelto = 1;
+                    registroResuelto = true;
                 }
             }
         }
@@ -376,24 +384,24 @@ void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios)
         printf("1-Ver estadisticas generales\n");
         printf("2-Dar de alta a un gestor\n");
         printf("3-Dar de baja a un gestor\n");
-        printf("4-Volver\n");
+        printf("0-Volver\n");
         leerEntero("Seleccione una opción: ", &op);
         switch (op)
         {
-        case 1:
+        case op1:
             printf("\nVISTA DE ESTADISTICAS A DESARROLLAR.\n");
             pausa();
             break;
-        case 2:
+        case op2:
             limpiarPantalla();
             AltaGestor(usuarios, cantidadUsuarios);
             break;
-        case 3:
+        case op3:
             limpiarPantalla();
             BajaGestor(usuarios, cantidadUsuarios);
             pausa();
             break;
-        case 4:
+        case SALIR:
             printf("\nVolviendo...\n");
             break;
         default:
@@ -401,7 +409,7 @@ void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios)
             pausa(); // sin esto el limpiarPantalla() del ciclo borra el mensaje
             break;
         }
-    } while (op != 4);
+    } while (op != SALIR);
 }
 
 // *********************************************************************************
