@@ -147,27 +147,83 @@ int iniciarSesion()
 void MenuUsuario()
 {
     int op = 0;
+    Articulo articuloMasVendido;
+    Cliente mejorCliente;
+    float ventasDelMes;
     printf("----Bienvenide Gestor----\n");
     do
     {
         printf("\n");
-        printf("1-Registrar Factura/s\n");
-        printf("2-Eliminar Factura/s\n");
-        printf("3-Buscar Factura/s\n");
-        printf("4-Cantidad de clientes por zona\n");
-        printf("5-Ver producto estrella\n");
-        printf("6-Ver cliente estrella\n");
-        printf("7-Volver\n");
+        printf("1-Facturas\n");
+        printf("2-Estadisticas\n");
+        printf("3-Productos\n");
+        printf("Vistazo general\n");
+        printf("El articulo más vendido es %s\t\t", articuloMasVendido.descripcion);
+        printf("El mejor cliente hasta ahora es %s\t\t", mejorCliente.datos.nombreYApellido);
+        printf("Ventas del mes: %.2f\n", ventasDelMes);
+        printf("4-Volver\n");
         leerEntero("Seleccione una opción: ", &op);
         switch (op)
         {
         case 1:
-            printf("\nREGISTRO DE FACTURAS A DESARROLLAR\n");
-            registrarFactura();
+            printf("\nSECCION FACTURAS\n");
+            printf("\n");
+            printf("1. Generar nueva factura\n");
+            printf("2. Ver listado de facturas\n");
+            printf("3. Eliminar factura de la base de datos\n");
+            printf("4-Volver\n");
+            leerEntero("Seleccione una opción: ", &op);
+            switch (op)
+            {
+            case 1:
+                printf("CREAR FUNCION GENERAR NUEVA FACTURA");
+                pausa();
+                break;
+            case 2:
+                printf("CREAR FUNCION VER LISTADO DE FACTURAS");
+                pausa();
+                break;
+            case 3:
+                printf("CREAR FUNCION ELIMINAR FACTURA DE LA BD");
+                pausa();
+                break;
+            case 4:
+                printf("\nVolviendo...\n");
+                break;
+                
+            default:
+                printf("Error: Fuera de rango. Reintente.\n");
+                break;
+            }
             pausa();
             break;
         case 2:
-            printf("\nELIMINACIÓN DE FACTURAS A DESARROLLAR\n");
+            printf("\nSECCION ESTADISTICAS\n");
+            printf("\n");
+            printf("1. Ver producto estrella\n");
+            printf("2. Ver mejor cliente\n");
+            printf("3. Generar estadisticas generales\n");
+            printf("4-Volver\n");
+            leerEntero("Seleccione una opción: ", &op);
+            switch (op)
+            {
+            case 1:
+                printf("Desarrollar ver producto estrella\n");
+                break;
+            case 2:
+                printf("Desarrollar ver mejor cliente\n");
+                break;
+            case 3:
+                printf("Desarrollar generar estadisticas generales\n");
+                break;
+            case 4:
+                printf("Volviendo\n");
+                break;
+            
+            default:
+                printf("Error: Fuera de rango. Reintente.\n");  
+                break;
+            }
             pausa();
             break;
         case 3:
