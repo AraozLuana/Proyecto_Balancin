@@ -38,7 +38,7 @@ int main()
             if (LogeoGestor(usuarios, cantidadUsuarios))
             {
                 limpiarPantalla();
-                printf("----Bienvenide a Facturitas----\n");
+                printf("----Bienvenide a Balancin----\n");
                 MenuUsuario();
             }
             break;
