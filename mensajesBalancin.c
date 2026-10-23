@@ -1,45 +1,45 @@
-void mensajeSalir()
-{
-    /*
+#include <stdio.h>
+void onda(int);
+ 
+int main(){
+    onda(8);
+	onda(2);
+	Printf( "\nB  I  E  N  V  E  N  I  D  O / A");
+	printf("\n _/_/__/_/__/_/__/_/__/_/__/_/__/_/__/_/__/_/__/_/__/_/__/_/__/_/__/_/_");
+	Printf("\n Al futuro de tu negocio - B A L A N C I N - Tus cuentas, equilibradas");
+	Printf( "\n       ========================        ======================== ");
+	printf ("\n           1. Administrar                    2. Gestionar	  ");
+	Printf( "\n       ========================        ======================== ");
+	printf("\n                   ========   0.  SALIR   ========");
+	printf("\n              	    ¿Qué vamos a hacer hoy?	");
+    
+    Printf("\n1010101010101010101010101010101010101010101010101010");
+	printf("        ESTA OPCIÓN SIGUE EN DESARROLLO");
+    Printf("\n1010101010101010101010101010101010101010101010101010");	
 
 
-
-    Escribir "_\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/_";
-	Escribir "";
-	Escribir "¸.·´¯`·.¸.·´¯`·.¸  B  I  E  N  V  E  N  I  D  O / A ¸.·´¯`·.¸.·´¯`·.¸";
-	Escribir "";
-	Escribir "_\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/_";
-	Escribir "";
-	Escribir "	Al futuro de tu negocio - B A L A N C I N - Tus cuentas, equilibradas";
-	Escribir "";
-	Escribir "      ========================        ======================== ";
-	Escribir "          1. Administrar                    2. Gestionar	  ";
-	Escribir "      ========================        ======================== ";
-	Escribir "";
-	Escribir "                  ========   0.  SALIR   ========";
-	Escribir "";
+    //Funcion adios(salir Por Referencia)
+	printf("\n.·´¯·...·´¯·...·´¯·...·´¯·...·´¯·...·´¯·..");
+	printf("\n G R A C I A S   por haber usado   BALANCIN");
+	printf("              Hasta lueguito! <3        ");
+	printf("\n..·´¯·...·´¯·...·´¯·...·´¯·...·´¯·...·´¯·..");
+	//salir<-Verdadero;
+    //FinFuncion
 	
-	Escribir Sin Saltar "        	    ¿Qué vamos a hacer hoy?	";
-    
+	return 0;
+}
 
-    
+void onda(int x)
+{
+    int i;
+    for (i = 0; i < x; i++)
+        printf(".·´¯·..");
+    printf("\n");
+}
 
-    Escribir "1010101010101010101010101010101010101010101010101010";
-	Escribir "        ESTA OPCIÓN SIGUE EN DESARROLLO";
-	Escribir "1010101010101010101010101010101010101010101010101010";
-
-
-
-
-    Funcion adios(salir Por Referencia)
-	Escribir "¸.·´¯·.¸.·´¯·.¸.·´¯·.¸.·´¯·.¸.·´¯·.¸.·´¯·.¸";
-	Escribir "   G R A C I A S   por haber usado   BALANCIN";
-	Escribir "             Hasta lueguito! <3        ";
-	Escribir "¸.·´¯·.¸.·´¯·.¸.·´¯·.¸.·´¯·.¸.·´¯·.¸.·´¯·.¸";
-	salir<-Verdadero;
-    FinFuncion
-    
-    
-    
-    */
+void botones(int x)
+{
+	int i;
+    for (i = 0; i < x; i++)
+        printf("=");
 }
