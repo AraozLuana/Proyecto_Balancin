@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include "Estructuras.h"
 #include "utiles_Proyecto.h"
- 
+
 #ifdef _WIN32
 #include <conio.h>
 #include <windows.h>
@@ -22,11 +22,14 @@
 #define op4 4
 #define op5 5
 #define op6 6
+#define op7 7
 
 #define CLAVE_ADMIN "admin123"
 #define MAXIMO_INTENTOS 4
 #define CANCELAR (-2)
 #define SALIR 0
+#define CANT_ITEMS_MENU 4
+#define FILA_MENU 3
 
 // Resultados de validarLogin
 #define CONTRA_INCORRECTA 0
@@ -50,11 +53,14 @@ void MenuUsuario();
 void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios);
 void AltaGestor(Usuario usuarios[], int *cantidadUsuarios);
 void pantallaCarga();
+void mostrarMenu(char VecMenu[][50]);
+int seleccionaItem(char VecMenu[][50]);
 
 // *********************************************************************************
 // Recorre el arreglo USUARIOS buscando un nombre que coincida con el
 // que le pasás, y devuelve la posición donde lo encontró (o -1)
 // *********************************************************************************
+
 int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[])
 {
     int i = 0;
@@ -71,7 +77,61 @@ int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[]
 
     return posicionEncontrada;
 }
- 
+// *********************************************************************************
+// Funciones para el menu con cursores
+// *********************************************************************************
+void mostrarMenu(char VecMenu[][50])
+{
+    int i = 0;
+    printf("\033[7m\033[33m %s \033[0m\033[27m\n", VecMenu[i]);
+    for (i = 1; i < CANT_ITEMS_MENU; i++)
+    {
+        printf("\033[33m %s \033[0m\n", VecMenu[i]);
+    }
+    linea(50);
+}
+int seleccionaItem(char VecMenu[][50]){
+    int tecla;
+    int i = 0;
+    do
+    {
+        tecla = getch();
+
+        if (tecla == 0 || tecla == 224) /* prefijo de tecla especial */
+        {
+            tecla = getch();
+
+            switch (tecla)
+            {
+            case 80: /* flecha abajo */
+                /* despinta el ítem actual */
+                printf("\033[%d;1H\033[K\033[33m %s \033[0m\n", FILA_MENU + i, VecMenu[i]);
+
+                i++;
+                if (i > CANT_ITEMS_MENU - 1)
+                    i = 0;
+
+                /* pinta el nuevo ítem seleccionado */
+                printf("\033[%d;1H\033[K\033[7m\033[33m %s \033[0m\033[27m\n", FILA_MENU + i, VecMenu[i]);
+                break;
+
+            case 72: /* flecha arriba */
+                printf("\033[%d;1H\033[K\033[33m %s \033[0m\n", FILA_MENU + i, VecMenu[i]);
+
+                i--;
+                if (i < 0)
+                    i = CANT_ITEMS_MENU - 1;
+
+                printf("\033[%d;1H\033[K\033[7m\033[33m %s \033[0m\033[27m\n", FILA_MENU + i, VecMenu[i]);
+                break;
+            }
+        }
+
+    } while (tecla != 13); /* Enter */
+
+    return i;
+
+}
 // *********************************************************************************
 // Usa buscarUsuario por dentro y, si lo encuentra, compara la contraseña.
 // Devuelve el permi de la cuenta (PERMI_ADMIN o PERMI_GESTOR) si el login fue
@@ -126,6 +186,7 @@ int iniciarSesion()
 
     do
     {
+        
         printf("Seleccione su Usuario:\n");
         printf("1- Administrador\n");
         printf("2- Gestor\n");
@@ -153,25 +214,21 @@ int iniciarSesion()
 // *********************************************************************************
 // MENÚ GESTOR
 // *********************************************************************************
+
 void MenuUsuario()
 {
     int op = 0;
-    Articulo articuloMasVendido;
-    Cliente mejorCliente;
-    float ventasDelMes;
+    char VecMenuPrincipal[4][50] = {"1. Facturas", "2. Estadisticas", "3. Productos", "0. Salir"};
+    utf8();
+    limpiarPantalla();
     printf("----Bienvenide Gestor----\n");
     do
     {
+        //limpiarPantalla();
         printf("\n");
-        printf("1-Facturas\n");
-        printf("2-Estadisticas\n");
-        printf("3-Productos\n");
-        printf("Vistazo general\n");
-        printf("El articulo más vendido es %s\t\t", articuloMasVendido.descripcion);
-        printf("El mejor cliente hasta ahora es %s\t\t", mejorCliente.datos.nombreYApellido);
-        printf("Ventas del mes: %.2f\n", ventasDelMes);
-        printf("0-Volver\n");
-        leerEntero("Seleccione una opción: ", &op);
+        mostrarMenu(VecMenuPrincipal);
+        int indice = seleccionaItem(VecMenuPrincipal);
+        op = (indice +1) % CANT_ITEMS_MENU;
         switch (op)
         {
         case op1:
@@ -180,6 +237,10 @@ void MenuUsuario()
             printf("1. Generar nueva factura\n");
             printf("2. Ver listado de facturas\n");
             printf("3. Eliminar factura de la base de datos\n");
+            printf("4. Ver listado de clientes\n");
+            printf("5. Agregar cliente\n");
+            printf("6. Eliminar cliente\n");
+            printf("7. Modificar cliente");
             printf("0-Volver\n");
             leerEntero("Seleccione una opción: ", &op);
             switch (op)
@@ -196,10 +257,23 @@ void MenuUsuario()
                 printf("CREAR FUNCION ELIMINAR FACTURA DE LA BD");
                 pausa();
                 break;
+            case op4:
+                printf("CREAR FUNCION VER LISTADO DE CLIENTES");
+                break;
+            case op5:
+                printf("CREAR FUNCION AGREGAR CLIENTE");
+                break;
+            case op6:
+                printf("CREAR FUNCION ELIMINAR CLIENTE");
+                break;
+            case op7:
+                printf("CREAR FUNCION MODIFICAR CLIENTE");
+                break;
+
             case SALIR:
                 printf("\nVolviendo...\n");
                 break;
-                
+
             default:
                 printf("Error: Fuera de rango. Reintente.\n");
                 break;
@@ -210,8 +284,9 @@ void MenuUsuario()
             printf("\nSECCION ESTADISTICAS\n");
             printf("\n");
             printf("1. Ver producto estrella\n");
-            printf("2. Ver mejor cliente\n");
-            printf("3. Generar estadisticas generales\n");
+            printf("2. Ver producto mas vendido\n");
+            printf("3. Ver mejores clientes\n");
+            printf("4. Ver ventas por zona\n");
             printf("0-Volver\n");
             leerEntero("Seleccione una opción: ", &op);
             switch (op)
@@ -220,17 +295,20 @@ void MenuUsuario()
                 printf("Desarrollar ver producto estrella\n");
                 break;
             case op2:
-                printf("Desarrollar ver mejor cliente\n");
+                printf("Desarrollar ver producto mas vendido\n");
                 break;
             case op3:
-                printf("Desarrollar generar estadisticas generales\n");
+                printf("Desarrollar ver mejores clientes SEGUN CRITERIO MENSAJE LUANA EN EL GRUPO\n");
+                break;
+            case op4:
+                printf("Desarrollar ver ventas por zona");
                 break;
             case SALIR:
                 printf("Volviendo\n");
                 break;
-            
+
             default:
-                printf("Error: Fuera de rango. Reintente.\n");  
+                printf("Error: Fuera de rango. Reintente.\n");
                 break;
             }
             pausa();
@@ -263,7 +341,7 @@ void MenuUsuario()
                 break;
             case SALIR:
                 printf("Volviendo....");
-            
+
             default:
                 printf("Error: Fuera de rango. Reintente.\n");
                 break;
@@ -344,7 +422,7 @@ void BajaGestor(Usuario usuarios[], int *cantidadUsuarios)
         printf("Operación cancelada.\n");
         pausa();
     }
-    else if(strcmp(nombre, "admin") == 0)
+    else if (strcmp(nombre, "admin") == 0)
     {
         printf("No se puede dar de baja al administrador.\n");
         pausa();
@@ -369,7 +447,6 @@ void BajaGestor(Usuario usuarios[], int *cantidadUsuarios)
             pausa();
         }
     }
-
 }
 // *********************************************************************************
 // MENÚ ADMIN
@@ -377,29 +454,32 @@ void BajaGestor(Usuario usuarios[], int *cantidadUsuarios)
 void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios)
 {
     int op = 0;
+
+    utf8();
     do
     {
         limpiarPantalla();
         printf("---- Menu de Administrador ----\n");
-        printf("1-Ver estadisticas generales\n");
-        printf("2-Dar de alta a un gestor\n");
-        printf("3-Dar de baja a un gestor\n");
-        printf("0-Volver\n");
-        leerEntero("Seleccione una opción: ", &op);
+        printf("\n");
+        printf("1. Dar de alta a un gestor\n");
+        printf("2. Dar de baja a un gestor\n");
+        printf("0. Salir\n");
+
+
+        //arreglar menu con cursores
+        //mostrarMenu(VecMenuPrincipal);
+        //indice = seleccionaItem(VecMenuPrincipal);
+        //op = (indice + 1) % CANT_ITEMS_MENU;
+        leerEntero("Ingrese una opcion", &op);
         switch (op)
         {
         case op1:
-            printf("\nVISTA DE ESTADISTICAS A DESARROLLAR.\n");
-            pausa();
-            break;
-        case op2:
             limpiarPantalla();
             AltaGestor(usuarios, cantidadUsuarios);
             break;
-        case op3:
+        case op2:
             limpiarPantalla();
             BajaGestor(usuarios, cantidadUsuarios);
-            pausa();
             break;
         case SALIR:
             printf("\nVolviendo...\n");
@@ -498,7 +578,7 @@ bool LogeoGestor(Usuario usuarios[], int cantidadUsuarios)
     return false;
 }
 
-void mostrar_pose1() 
+void mostrar_pose1()
 {
     printf("      /\\_/\\\n");
     printf("     ( o.o )\n");
@@ -513,7 +593,7 @@ void mostrar_pose1()
 }
 
 // Pose 2: Brazos arriba (saludando o moviéndose)
-void mostrar_pose2() //FIGURA PRUEBA
+void mostrar_pose2() // FIGURA PRUEBA
 {
     printf("     _\\_/_ \n");
     printf("    ( o.o )\n");
@@ -543,7 +623,6 @@ void pantallaCarga()
 
 void registrarFactura()
 {
-    
 }
 
 #endif /* FACTUFUNCIONES_H_ */
