@@ -23,6 +23,7 @@
 #define op5 5
 #define op6 6
 #define op7 7
+#define ERROR (-1)
 
 #define CLAVE_ADMIN "admin123"
 #define MAXIMO_INTENTOS 4
@@ -64,7 +65,7 @@ int seleccionaItem(char VecMenu[][50]);
 int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[])
 {
     int i = 0;
-    int posicionEncontrada = (-1);
+    int posicionEncontrada = ERROR;
 
     while (i < cantidadUsuarios && posicionEncontrada == (-1))
     {
@@ -90,7 +91,8 @@ void mostrarMenu(char VecMenu[][50])
     }
     linea(50);
 }
-int seleccionaItem(char VecMenu[][50]){
+int seleccionaItem(char VecMenu[][50])
+{
     int tecla;
     int i = 0;
     do
@@ -130,7 +132,6 @@ int seleccionaItem(char VecMenu[][50]){
     } while (tecla != 13); /* Enter */
 
     return i;
-
 }
 // *********************************************************************************
 // Usa buscarUsuario por dentro y, si lo encuentra, compara la contraseña.
@@ -186,7 +187,7 @@ int iniciarSesion()
 
     do
     {
-        
+
         printf("Seleccione su Usuario:\n");
         printf("1- Administrador\n");
         printf("2- Gestor\n");
@@ -224,11 +225,11 @@ void MenuUsuario()
     printf("----Bienvenide Gestor----\n");
     do
     {
-        //limpiarPantalla();
+        // limpiarPantalla();
         printf("\n");
         mostrarMenu(VecMenuPrincipal);
         int indice = seleccionaItem(VecMenuPrincipal);
-        op = (indice +1) % CANT_ITEMS_MENU;
+        op = (indice + 1) % CANT_ITEMS_MENU;
         switch (op)
         {
         case op1:
@@ -430,7 +431,7 @@ void BajaGestor(Usuario usuarios[], int *cantidadUsuarios)
     else
     {
         int posicion = buscarUsuario(usuarios, *cantidadUsuarios, nombre);
-        if (posicion == -1)
+        if (posicion == ERROR)
         {
             printf("Gestor no encontrado.\n");
             pausa();
@@ -465,11 +466,10 @@ void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios)
         printf("2. Dar de baja a un gestor\n");
         printf("0. Salir\n");
 
-
-        //arreglar menu con cursores
-        //mostrarMenu(VecMenuPrincipal);
-        //indice = seleccionaItem(VecMenuPrincipal);
-        //op = (indice + 1) % CANT_ITEMS_MENU;
+        // arreglar menu con cursores
+        // mostrarMenu(VecMenuPrincipal);
+        // indice = seleccionaItem(VecMenuPrincipal);
+        // op = (indice + 1) % CANT_ITEMS_MENU;
         leerEntero("Ingrese una opcion", &op);
         switch (op)
         {
@@ -623,6 +623,102 @@ void pantallaCarga()
 
 void registrarFactura()
 {
+}
+
+// *********************************************************************************
+/* Debe leer el archivo clientes.dat y devolver la posición del cliente con el código dado.
+Si no lo encuentra, devuelve -1. */
+// *********************************************************************************
+int buscarCliente(int codigoCliente)
+{
+    FILE *archivoClientes = fopen("clientes.dat", "rb");
+    if (archivoClientes == NULL)
+    {
+        return ERROR; // Error al abrir el archivo
+    }
+
+    Cliente cliente;
+    int posicion = 0;
+
+    while (fread(&cliente, sizeof(Cliente), 1, archivoClientes))
+    {
+        if (cliente.codigo == codigoCliente)
+        {
+            fclose(archivoClientes);
+            return posicion;
+        }
+        posicion++;
+    }
+
+    fclose(archivoClientes);
+    return ERROR;
+}
+
+// *********************************************************************************
+/* Debe leer el archivo clientes.dat y buscar el o los clientes que coincidadan con el nombre
+buscado, los imprime junto con su codigo */
+// *********************************************************************************
+void buscarCodigo(char *nombreBuscado)
+{
+    FILE *archivoClientes = fopen("clientes.dat", "rb");
+    int impreso = 0;
+    if (archivoClientes == NULL)
+    {
+        return ERROR; // Error al abrir el archivo
+    }
+
+    Cliente cliente;
+    int posicion = 0;
+
+    while (fread(&cliente, sizeof(Cliente), 1, archivoClientes))
+    {
+        if (strcmp(cliente.datos.nombreYApellido, nombreBuscado) == 0)
+        {
+            printf("Nombre: %s, Código: %d \n", cliente.datos.nombreYApellido, cliente.codigo);
+            impreso++;
+        }
+    }
+    fclose(archivoClientes);
+    if (impreso == 0)
+    {
+        printf("No se encontraron clientes con el nombre: %s\n", nombreBuscado);
+    }
+    fclose(archivoClientes);
+    return ERROR;
+}
+
+// *********************************************************************************
+/* Debe leer las facturas con buscarCLiente y devolver el codigo de cual de ellos gastó mas dinero en total.*/
+// *********************************************************************************
+int clienteEstrella()
+{
+    Cliente cliente;
+    Cliente clienteMax;
+    float totalMax = 0.0;
+    FILE *archivoClientes = fopen("clientes.dat", "rb");
+    if (archivoClientes == NULL)
+        return ERROR;
+    else
+    {
+        while (fread(&cliente, sizeof(Cliente), 1, archivoClientes))
+        {
+            if (cliente.activo == 1 && cliente.saldo > totalMax)
+            {
+                totalMax = cliente.saldo;
+                clienteMax = cliente;
+            }
+        }
+        if (totalMax == 0.0)
+        {
+            fclose(archivoClientes);
+            return ERROR;
+        }
+        else
+        {
+            fclose(archivoClientes);
+            return clienteMax.codigo;
+        }
+    }
 }
 
 #endif /* FACTUFUNCIONES_H_ */

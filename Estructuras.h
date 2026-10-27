@@ -9,6 +9,7 @@
 #define LARGO_CLAVE     30
 #define LARGO_NOMBRE    60
 #define LARGO_DESC      80
+#define LARGO_LOCALIDAD  40
 #define PERMI_GESTOR 2
 #define PERMI_ADMIN 1
 
@@ -38,6 +39,7 @@ typedef struct {
 typedef struct {
     char  nombreYApellido[LARGO_NOMBRE];
     int   numeroDNI;
+    char  localidad[LARGO_LOCALIDAD];
 } Persona;
  
 /* ============================================================
@@ -47,6 +49,7 @@ typedef struct {
     int      codigo;          /* PK, único, > 0 */
     Persona  datos;
     int      activo;          /* 1 = activo, 0 = baja lógica */
+    float    saldo;
 } Cliente;
  
 /* ============================================================
