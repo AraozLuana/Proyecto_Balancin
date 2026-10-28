@@ -49,13 +49,22 @@ int validarLogin(Usuario usuarios[], int cantidadUsuarios, char nombreIngresado[
 int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo[], char claveNueva[], int permiNuevo);
 int iniciarSesion();
 int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios);
+int seleccionaItem(char VecMenu[][50]);
+int buscarCliente(int codigoCliente);
+int codigoEstrella();
 bool LogeoGestor(Usuario usuarios[], int cantidadUsuarios);
 void MenuUsuario();
 void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios);
 void AltaGestor(Usuario usuarios[], int *cantidadUsuarios);
+void BajaGestor(Usuario usuarios[], int *cantidadUsuarios);
+void mostrar_pose1();
+void mostrar_pose2();
+void registrarFactura();
 void pantallaCarga();
 void mostrarMenu(char VecMenu[][50]);
-int seleccionaItem(char VecMenu[][50]);
+void clienteEstrella();
+void buscarCodigo(char *nombreBuscado);
+char *nombreConCodigo(int codigoCliente);
 
 // *********************************************************************************
 // Recorre el arreglo USUARIOS buscando un nombre que coincida con el
