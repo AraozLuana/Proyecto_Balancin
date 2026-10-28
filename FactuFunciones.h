@@ -5,6 +5,7 @@
 #include <time.h>
 #include <string.h>
 #include <stdbool.h>
+
 #include "Estructuras.h"
 #include "utiles_Proyecto.h"
 
@@ -13,6 +14,9 @@
 #include <windows.h>
 #else
 #include <unistd.h>
+#endif
+#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
+#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
 #endif
 
 /* Constantes para evitar magic numbers en cases y funciones varias */
@@ -23,6 +27,8 @@
 #define op5 5
 #define op6 6
 #define op7 7
+const char *pathArchivoUsers = "usersData.dat";
+
 
 #define CLAVE_ADMIN "admin123"
 #define MAXIMO_INTENTOS 4
@@ -30,6 +36,10 @@
 #define SALIR 0
 #define CANT_ITEMS_MENU 4
 #define FILA_MENU 3
+#define FLECHA_ARRIBA 72
+#define FLECHA_ABAJO  80
+#define ENTER         13
+#define ANCHO_LINEA   40
 
 // Resultados de validarLogin
 #define CONTRA_INCORRECTA 0
@@ -40,26 +50,41 @@
 #define USUARIO_EXISTE 0
 #define SIN_ESPACIO (-1)
 
+
 // *********************************************************************************
 // PROTOTIPOS
 // *********************************************************************************
 int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[]);
 int validarLogin(Usuario usuarios[], int cantidadUsuarios, char nombreIngresado[], char claveIngresada[]);
-int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo[], char claveNueva[], int permiNuevo);
+int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo[], char claveNueva[], int permiNuevo, FILE *archivoUsers);
 int iniciarSesion();
-int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios);
+int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios);
 bool LogeoGestor(Usuario usuarios[], int cantidadUsuarios);
 void MenuUsuario();
-void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios);
-void AltaGestor(Usuario usuarios[], int *cantidadUsuarios);
+void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios);
+void AltaGestor(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios);
 void pantallaCarga();
 void mostrarMenu(char VecMenu[][50]);
 int seleccionaItem(char VecMenu[][50]);
+void prepararConsola(void);
+void mostrarMenuAdmin(const char *titulo, const char *opciones[], int cant, int sel);
+int elegirOpcion(const char *titulo, const char *opciones[], int cant);
+
+
 
 // *********************************************************************************
 // Recorre el arreglo USUARIOS buscando un nombre que coincida con el
 // que le pasás, y devuelve la posición donde lo encontró (o -1)
 // *********************************************************************************
+void prepararConsola(void)
+{
+    HANDLE hSalida = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD modo = 0;
+
+    SetConsoleOutputCP(CP_UTF8);
+    GetConsoleMode(hSalida, &modo);
+    SetConsoleMode(hSalida, modo | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+}
 
 int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[])
 {
@@ -80,6 +105,61 @@ int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[]
 // *********************************************************************************
 // Funciones para el menu con cursores
 // *********************************************************************************
+int elegirOpcionAdmin(const char *titulo, const char *opciones[], int cant)
+{
+    int sel = 0;
+    int tecla;
+
+    printf("\033[2J\033[?25l"); /* limpia pantalla y oculta el cursor */
+
+    do
+    {
+        mostrarMenuAdmin(titulo, opciones, cant, sel);
+        tecla = _getch();
+
+        if (tecla == 0 || tecla == 224) /* prefijo de tecla especial */
+        {
+            tecla = _getch();
+
+            if (tecla == FLECHA_ARRIBA)
+                sel = (sel == 0) ? cant - 1 : sel - 1;
+            else if (tecla == FLECHA_ABAJO)
+                sel = (sel == cant - 1) ? 0 : sel + 1;
+
+            tecla = 0; /* para que el código extendido no se confunda con Enter */
+        }
+        else if (tecla >= '1' && tecla < '1' + cant) /* atajo numérico */
+        {
+            sel = tecla - '1';
+            mostrarMenuAdmin(titulo, opciones, cant, sel);
+            tecla = ENTER;
+        }
+
+    } while (tecla != ENTER);
+
+    printf("\033[?25h"); /* vuelve a mostrar el cursor */
+    return sel + 1;
+}
+void mostrarMenuAdmin(const char *titulo, const char *opciones[], int cant, int sel)
+{
+    int i;
+
+    printf("\033[H"); /* cursor arriba a la izquierda: redibuja sin parpadeo */
+    linea(ANCHO_LINEA);
+    printf("  %s\n", titulo);
+    linea(ANCHO_LINEA);
+
+    for (i = 0; i < cant; i++)
+    {
+        if (i == sel)
+            printf("\033[7m\033[33m > %d. %s \033[0m\033[K\n", i + 1, opciones[i]); /* invertido */
+        else
+            printf("\033[33m   %d. %s \033[0m\033[K\n", i + 1, opciones[i]);
+    }
+
+    linea(ANCHO_LINEA);
+    printf(" Flechas: mover  |  Enter: elegir\n");
+}
 void mostrarMenu(char VecMenu[][50])
 {
     int i = 0;
@@ -158,8 +238,10 @@ int validarLogin(Usuario usuarios[], int cantidadUsuarios, char nombreIngresado[
 // Registra un usuario nuevo y actualiza la cantidad de usuarios
 // Devuelve EXITO, USUARIO_EXISTE o SIN_ESPACIO
 // *********************************************************************************
-int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo[], char claveNueva[], int permiNuevo)
+int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo[], char claveNueva[], int permiNuevo, FILE *archivoUsers)
 {
+    archivoUsers = fopen(pathArchivoUsers, "rb+");
+
     if (*cantidadUsuarios >= MAX_USUARIOS)
     {
         return SIN_ESPACIO;
@@ -173,7 +255,11 @@ int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo
     strcpy(usuarios[*cantidadUsuarios].nombreUsuario, nombreNuevo);
     strcpy(usuarios[*cantidadUsuarios].claveHash, claveNueva);
     usuarios[*cantidadUsuarios].permi = permiNuevo;
+    fwrite(&(usuarios[*cantidadUsuarios]), sizeof(Usuario), 1, archivoUsers);
     (*cantidadUsuarios)++;
+    fclose(archivoUsers);
+
+
     return EXITO;
 }
 
@@ -219,19 +305,23 @@ void MenuUsuario()
 {
     int op = 0;
     char VecMenuPrincipal[4][50] = {"1. Facturas", "2. Estadisticas", "3. Productos", "0. Salir"};
+    //char vecMenuFacturas[4][50];
+    //char vecMenuEstadisticas[4][50];
+    //char vecMenuProductos[4][50];
+
     utf8();
     limpiarPantalla();
     printf("----Bienvenide Gestor----\n");
     do
     {
-        //limpiarPantalla();
-        printf("\n");
+        limpiarPantalla();
         mostrarMenu(VecMenuPrincipal);
-        int indice = seleccionaItem(VecMenuPrincipal);
-        op = (indice +1) % CANT_ITEMS_MENU;
+        op= seleccionaItem(VecMenuPrincipal);
+       
         switch (op)
         {
         case op1:
+            
             printf("\nSECCION FACTURAS\n");
             printf("\n");
             printf("1. Generar nueva factura\n");
@@ -360,7 +450,7 @@ void MenuUsuario()
 // Usa buffers propios: antes pisaba la variable "clave" de LogeoAdmin con la
 // contraseña del gestor, y eso rompía la condición del ciclo de login.
 // *********************************************************************************
-void AltaGestor(Usuario usuarios[], int *cantidadUsuarios)
+void AltaGestor(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios)
 {
     char nombre[LARGO_USUARIO];
     char clave[LARGO_CLAVE];
@@ -391,7 +481,7 @@ void AltaGestor(Usuario usuarios[], int *cantidadUsuarios)
             }
             else
             {
-                int resultado = registrarUsuario(usuarios, cantidadUsuarios, nombre, clave, PERMI_GESTOR);
+                int resultado = registrarUsuario(usuarios, cantidadUsuarios, nombre, clave, PERMI_GESTOR, archivoUsuarios);
                 if (resultado == SIN_ESPACIO)
                 {
                     printf("ERROR: sin espacio para mas usuarios\n");
@@ -451,31 +541,32 @@ void BajaGestor(Usuario usuarios[], int *cantidadUsuarios)
 // *********************************************************************************
 // MENÚ ADMIN
 // *********************************************************************************
-void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios)
+void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios)
 {
     int op = 0;
-
-    utf8();
+    //char vecMenuAdministrador[4][50]= {"1. Dar de alta a un gestor\n", "2. Dar de baja a un gestor\n", "0.Salir"};
+    const char *menu[] = {"1. Dar de alta a un gestor\n",
+                          "2. Dar de baja a un gestor\n",
+                          "0.Salir"
+                          };
+    int cant = sizeof(menu) / sizeof(menu[0]);
+    prepararConsola();
+ 
     do
     {
-        limpiarPantalla();
-        printf("---- Menu de Administrador ----\n");
-        printf("\n");
-        printf("1. Dar de alta a un gestor\n");
-        printf("2. Dar de baja a un gestor\n");
-        printf("0. Salir\n");
+        
 
-
-        //arreglar menu con cursores
-        //mostrarMenu(VecMenuPrincipal);
-        //indice = seleccionaItem(VecMenuPrincipal);
-        //op = (indice + 1) % CANT_ITEMS_MENU;
-        leerEntero("Ingrese una opcion", &op);
+        op = elegirOpcion("Menu Administrador", menu, cant);
+        
+        
+        //mostrarMenuAdmin(vecMenuAdministrador, &menu, cant, );
+        //op = seleccionaItem(vecMenuAdministrador);
+    
         switch (op)
         {
         case op1:
             limpiarPantalla();
-            AltaGestor(usuarios, cantidadUsuarios);
+            AltaGestor(usuarios, cantidadUsuarios, archivoUsuarios);
             break;
         case op2:
             limpiarPantalla();
@@ -497,7 +588,7 @@ void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios)
 // Devuelve CANCELAR si se agotaron los intentos (cierra el programa),
 // 0 en cualquier otro caso (vuelve a la pantalla de selección de rol).
 // *********************************************************************************
-int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios)
+int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios)
 {
     int intentos = MAXIMO_INTENTOS;
     char clave[LARGO_CLAVE];
@@ -516,7 +607,7 @@ int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios)
         if (strcmp(clave, CLAVE_ADMIN) == 0)
         {
             limpiarPantalla();
-            MenuAdmin(usuarios, cantidadUsuarios);
+            MenuAdmin(usuarios, cantidadUsuarios, archivoUsuarios);
             return 0;
         }
 
