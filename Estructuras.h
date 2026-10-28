@@ -28,9 +28,8 @@ typedef enum {
 typedef struct {
     char       nombreUsuario[LARGO_USUARIO];  /* PK lógica, única */
     char       claveHash[LARGO_CLAVE];        /* hash, NUNCA texto plano */
-    RolUsuario rol;
-    int        activo;                        /* 1 = activo, 0 = baja */
-    int permi;
+    int rol;
+    int activo;                        /* 1 = activo, 0 = baja */
 } Usuario;
  
 /* ============================================================

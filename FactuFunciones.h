@@ -149,7 +149,7 @@ int validarLogin(Usuario usuarios[], int cantidadUsuarios, char nombreIngresado[
 
     if (strcmp(usuarios[posicion].claveHash, claveIngresada) == 0)
     {
-        return usuarios[posicion].permi;
+        return usuarios[posicion].rol; // Devuelve el permi del usuario (PERMI_ADMIN o PERMI_GESTOR)
     }
 
     return CONTRA_INCORRECTA;
@@ -173,7 +173,8 @@ int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo
 
     strcpy(usuarios[*cantidadUsuarios].nombreUsuario, nombreNuevo);
     strcpy(usuarios[*cantidadUsuarios].claveHash, claveNueva);
-    usuarios[*cantidadUsuarios].permi = permiNuevo;
+    usuarios[*cantidadUsuarios].rol = permiNuevo;
+    usuarios[*cantidadUsuarios].activo = 1;
     (*cantidadUsuarios)++;
     return EXITO;
 }
@@ -288,6 +289,7 @@ void MenuUsuario()
             printf("2. Ver producto mas vendido\n");
             printf("3. Ver mejores clientes\n");
             printf("4. Ver ventas por zona\n");
+            printf("5. Ver cliente estrella\n");
             printf("0-Volver\n");
             leerEntero("Seleccione una opción: ", &op);
             switch (op)
@@ -303,6 +305,8 @@ void MenuUsuario()
                 break;
             case op4:
                 printf("Desarrollar ver ventas por zona");
+                break;
+            case op5:
                 break;
             case SALIR:
                 printf("Volviendo\n");
@@ -430,6 +434,7 @@ void BajaGestor(Usuario usuarios[], int *cantidadUsuarios)
     }
     else
     {
+        int opcion;
         int posicion = buscarUsuario(usuarios, *cantidadUsuarios, nombre);
         if (posicion == ERROR)
         {
@@ -438,13 +443,32 @@ void BajaGestor(Usuario usuarios[], int *cantidadUsuarios)
         }
         else
         {
-            // Mover todos los usuarios posteriores una posición hacia atrás
-            for (int i = posicion; i < *cantidadUsuarios - 1; i++)
+            printf("Gestor encontrado: %s\n", usuarios[posicion].nombreUsuario);
+            printf("¿Eliminar de manera logica o fisica?\n");
+            printf("1. Logica (marcar como inactivo)\n");
+            printf("2. Fisica (eliminar del arreglo)\n");
+            leerEntero("Seleccione una opción: ", &opcion);
+            switch (opcion)
             {
-                usuarios[i] = usuarios[i + 1];
+            case 1:
+                usuarios[posicion].activo = 0;
+                printf("Gestor dado de baja de manera logica exitosamente.\n");
+                pausa();
+                break;
+            case 2:
+                // Mover todos los usuarios posteriores una posición hacia atrás
+                for (int i = posicion; i < *cantidadUsuarios - 1; i++)
+                {
+                    usuarios[i] = usuarios[i + 1];
+                }
+                (*cantidadUsuarios)--;
+                break;
+            default:
+                printf("Opción no válida. Operación cancelada.\n");
+                pausa();
+                return;
             }
-            (*cantidadUsuarios)--;
-            printf("Gestor dado de baja exitosamente.\n");
+            printf("Gestor eliminado permanentemente.\n");
             pausa();
         }
     }
@@ -662,35 +686,37 @@ void buscarCodigo(char *nombreBuscado)
 {
     FILE *archivoClientes = fopen("clientes.dat", "rb");
     int impreso = 0;
-    if (archivoClientes == NULL)
+    if (archivoClientes = !NULL)
     {
-        return ERROR; // Error al abrir el archivo
-    }
+        Cliente cliente;
 
-    Cliente cliente;
-    int posicion = 0;
-
-    while (fread(&cliente, sizeof(Cliente), 1, archivoClientes))
-    {
-        if (strcmp(cliente.datos.nombreYApellido, nombreBuscado) == 0)
+        while (fread(&cliente, sizeof(Cliente), 1, archivoClientes))
         {
-            printf("Nombre: %s, Código: %d \n", cliente.datos.nombreYApellido, cliente.codigo);
-            impreso++;
+            if (strcmp(cliente.datos.nombreYApellido, nombreBuscado) == 0)
+            {
+                printf("Nombre: %s, Código: %d \n", cliente.datos.nombreYApellido, cliente.codigo);
+                impreso++;
+            }
         }
+        fclose(archivoClientes);
+        if (impreso == 0)
+        {
+            printf("No se encontraron clientes con el nombre: %s\n", nombreBuscado);
+        }
+        fclose(archivoClientes);
+        printf("Error al buscar el código del cliente.\n");
     }
-    fclose(archivoClientes);
-    if (impreso == 0)
+    else
     {
-        printf("No se encontraron clientes con el nombre: %s\n", nombreBuscado);
+        printf("Error al abrir el archivo de clientes.\n");
+        return;
     }
-    fclose(archivoClientes);
-    return ERROR;
 }
 
 // *********************************************************************************
 /* Debe leer las facturas con buscarCLiente y devolver el codigo de cual de ellos gastó mas dinero en total.*/
 // *********************************************************************************
-int clienteEstrella()
+int codigoEstrella()
 {
     Cliente cliente;
     Cliente clienteMax;
@@ -718,6 +744,47 @@ int clienteEstrella()
             fclose(archivoClientes);
             return clienteMax.codigo;
         }
+    }
+}
+
+// *********************************************************************************
+/* Devuelve el nombre del cliente ingresando el codigo*/
+// *********************************************************************************
+char *nombreConCodigo(int codigoCliente)
+{
+    Cliente cliente;
+    FILE *archivoClientes = fopen("clientes.dat", "rb");
+    if (archivoClientes == NULL)
+        printf("Error al abrir el archivo de clientes.\n");
+    else
+    {
+        while (fread(&cliente, sizeof(Cliente), 1, archivoClientes))
+        {
+            if (cliente.codigo == codigoCliente)
+            {
+                fclose(archivoClientes);
+                return cliente.datos.nombreYApellido;
+            }
+        }
+        fclose(archivoClientes);
+        printf("No se encontró un cliente con el código %d.\n", codigoCliente);
+    }
+}
+
+// *********************************************************************************
+/* Imprime los datos del cliente que ha gastado más dinero en total. */
+// *********************************************************************************
+void clienteEstrella()
+{
+    if (codigoEstrella() == ERROR)
+    {
+        printf("No hay clientes activos o no hay clientes con saldo mayor a 0.\n");
+    }
+    else
+    {
+        int posicion;
+        posicion = codigoEstrella();
+        printf("Su cliente estrella es %s - codigo: %d\n", nombreConCodigo(posicion), posicion);
     }
 }
 
