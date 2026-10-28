@@ -49,12 +49,13 @@ int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo
 int iniciarSesion();
 int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios);
 bool LogeoGestor(Usuario usuarios[], int cantidadUsuarios);
-void MenuUsuario();
+void MenuUsuario(Articulo productos[], int cantidadProductos, DetalleFactura detalles[], int cantidadDetalles);
 void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios);
 void AltaGestor(Usuario usuarios[], int *cantidadUsuarios);
 void pantallaCarga();
 void mostrarMenu(char VecMenu[][50]);
 int seleccionaItem(char VecMenu[][50]);
+char *buscarProductoEstrella(Articulo productos[], int cantidadProductos, DetalleFactura detalles[], int cantidadDetalles);
 
 // *********************************************************************************
 // Recorre el arreglo USUARIOS buscando un nombre que coincida con el
@@ -90,7 +91,8 @@ void mostrarMenu(char VecMenu[][50])
     }
     linea(50);
 }
-int seleccionaItem(char VecMenu[][50]){
+int seleccionaItem(char VecMenu[][50])
+{
     int tecla;
     int i = 0;
     do
@@ -130,7 +132,6 @@ int seleccionaItem(char VecMenu[][50]){
     } while (tecla != 13); /* Enter */
 
     return i;
-
 }
 // *********************************************************************************
 // Usa buscarUsuario por dentro y, si lo encuentra, compara la contraseña.
@@ -186,7 +187,7 @@ int iniciarSesion()
 
     do
     {
-        
+
         printf("Seleccione su Usuario:\n");
         printf("1- Administrador\n");
         printf("2- Gestor\n");
@@ -215,7 +216,7 @@ int iniciarSesion()
 // MENÚ GESTOR
 // *********************************************************************************
 
-void MenuUsuario()
+void MenuUsuario(Articulo productos[], int cantidadProductos, DetalleFactura detalles[], int cantidadDetalles)
 {
     int op = 0;
     char VecMenuPrincipal[4][50] = {"1. Facturas", "2. Estadisticas", "3. Productos", "0. Salir"};
@@ -224,11 +225,11 @@ void MenuUsuario()
     printf("----Bienvenide Gestor----\n");
     do
     {
-        //limpiarPantalla();
+        // limpiarPantalla();
         printf("\n");
         mostrarMenu(VecMenuPrincipal);
         int indice = seleccionaItem(VecMenuPrincipal);
-        op = (indice +1) % CANT_ITEMS_MENU;
+        op = (indice + 1) % CANT_ITEMS_MENU;
         switch (op)
         {
         case op1:
@@ -269,7 +270,6 @@ void MenuUsuario()
             case op7:
                 printf("CREAR FUNCION MODIFICAR CLIENTE");
                 break;
-
             case SALIR:
                 printf("\nVolviendo...\n");
                 break;
@@ -292,8 +292,19 @@ void MenuUsuario()
             switch (op)
             {
             case op1:
-                printf("Desarrollar ver producto estrella\n");
+            {
+                // Producto que genera más ganancias
+                char *productoEstrella = buscarProductoEstrella(productos, cantidadProductos, detalles, cantidadDetalles);
+                if (productoEstrella != NULL)
+                {
+                    printf("El producto estrella es: %s\n", productoEstrella);
+                }
+                else
+                {
+                    printf("No se encontraron productos o detalles de facturas.\n");
+                }
                 break;
+            }
             case op2:
                 printf("Desarrollar ver producto mas vendido\n");
                 break;
@@ -465,11 +476,10 @@ void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios)
         printf("2. Dar de baja a un gestor\n");
         printf("0. Salir\n");
 
-
-        //arreglar menu con cursores
-        //mostrarMenu(VecMenuPrincipal);
-        //indice = seleccionaItem(VecMenuPrincipal);
-        //op = (indice + 1) % CANT_ITEMS_MENU;
+        // arreglar menu con cursores
+        // mostrarMenu(VecMenuPrincipal);
+        // indice = seleccionaItem(VecMenuPrincipal);
+        // op = (indice + 1) % CANT_ITEMS_MENU;
         leerEntero("Ingrese una opcion", &op);
         switch (op)
         {
@@ -621,8 +631,44 @@ void pantallaCarga()
     }
 }
 
-void registrarFactura()
+// Buscar el producto con mayor importe vendido (precio por cantidad vendida).
+char *buscarProductoEstrella(Articulo productos[], int cantidadProductos, DetalleFactura detalles[], int cantidadDetalles)
 {
+    if (cantidadProductos <= 0 || cantidadDetalles <= 0)
+    {
+        return NULL;
+    }
+
+    Articulo *productoEstrella = NULL;
+    float mayorImporteVendido = 0.0;
+
+    for (int i = 0; i < cantidadProductos; i++)
+    {
+        int cantidadVendida = 0;
+        for (int j = 0; j < cantidadDetalles; j++)
+        {
+            if (detalles[j].codigoArticulo == productos[i].codigo)
+            {
+                cantidadVendida += detalles[j].cantidad;
+            }
+        }
+
+        float importeVendido = productos[i].precio * cantidadVendida;
+        if (cantidadVendida > 0 && (productoEstrella == NULL || importeVendido > mayorImporteVendido))
+        {
+            productoEstrella = &productos[i];
+            mayorImporteVendido = importeVendido;
+        }
+    }
+
+    if (productoEstrella != NULL)
+    {
+        return productoEstrella->descripcion;
+    }
+    else
+    {
+        return NULL;
+    }
 }
 
 #endif /* FACTUFUNCIONES_H_ */

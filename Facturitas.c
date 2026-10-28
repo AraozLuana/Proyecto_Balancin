@@ -39,7 +39,8 @@ int main()
             {
                 limpiarPantalla();
                 printf("----Bienvenide a Balancin----\n");
-                MenuUsuario();
+                MenuUsuario(); // Llamada al menú de usuario con productos y detalles vacíos 
+                //(Hay que agregar los archivos de los productos y facturas para que funcionen las stas)
             }
             break;
 
