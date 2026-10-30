@@ -11,6 +11,11 @@ int main()
     Usuario usuarios[MAX_USUARIOS];
     int cantidadUsuarios = 0; // el admin es fijo (CLAVE_ADMIN), no se guarda en el arreglo
     int permi;
+    //FILE *archivoLogs;
+    //FILE *archivoProductos;
+    //FILE *archivoClientes;
+    //FILE *archivoFacturas;
+    FILE *archivoUsers = NULL;
 
     // Ciclo general
     do
@@ -28,7 +33,7 @@ int main()
         switch (permi) // Según el nivel de permiso es el menú al que va
         {
         case PERMI_ADMIN:
-            if (LogeoAdmin(usuarios, &cantidadUsuarios) == CANCELAR)
+            if (LogeoAdmin(usuarios, &cantidadUsuarios, archivoUsers) == CANCELAR)
             {
                 permi = CANCELAR; // se agotaron los intentos: cierra el programa
             }
