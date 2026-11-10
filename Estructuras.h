@@ -13,15 +13,8 @@
 #define PERMI_ADMIN 1
 #define ALICUOTA_IVA_ALIMENTOS_BASICOS 0.105
 #define ALICUOTA_IVA_PROCESADOS 0.21
+#define LARGO_CODIGO 4
 
- 
-/* ============================================================
-*  ROLES DE USUARIO
-* ============================================================ */
-typedef enum {
-    ROL_ADMIN  = 1,
-    ROL_GESTOR = 2
-} RolUsuario;
  
 /* ============================================================
 *  USUARIO
@@ -29,9 +22,8 @@ typedef enum {
 typedef struct {
     char       nombreUsuario[LARGO_USUARIO];  /* PK lógica, única */
     char       claveHash[LARGO_CLAVE];        /* hash, NUNCA texto plano */
-    RolUsuario rol;
     int        activo;                        /* 1 = activo, 0 = baja */
-    int permi;
+    int rol_usuario;                           /*1 = ADMIN, 2 = GESTOR*/ 
 } Usuario;
  
 /* ============================================================
@@ -41,7 +33,7 @@ typedef struct {
     char  nombreYApellido[LARGO_NOMBRE];
     int   numeroDNI;
 } Persona;
- 
+
 /* ============================================================
 *  CLIENTE
 * ============================================================ */
@@ -59,7 +51,8 @@ typedef struct {
     char  descripcion[LARGO_DESC];
     float precio;             /* NETO, sin IVA */
     int   stock;
-    int   activo;             /* 1 = activo, 0 = dado de baja */
+    int   estado;
+    int cantVendida;             /* 1 = activo, 0 = dado de baja */
 } Articulo;
  
 /* ============================================================

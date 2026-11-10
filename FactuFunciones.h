@@ -3,6 +3,7 @@
 
 #include "Estructuras.h"
 #include "utiles_Proyecto.h"
+#include <string.h>
 
 #ifdef _WIN32
 #include <conio.h>
@@ -22,52 +23,55 @@
 #define op5 5
 #define op6 6
 #define op7 7
-const char *pathArchivoUsers = "usersData.dat";
 
 #define CLAVE_ADMIN "admin123"
 #define MAXIMO_INTENTOS 4
-#define CANCELAR (-2)
+#define CANCELAR -2
 #define SALIR 0
-#define CANT_ITEMS_MENU 4
-#define FILA_MENU 3
 #define FLECHA_ARRIBA 72
 #define FLECHA_ABAJO 80
 #define ENTER 13
 #define ANCHO_LINEA 40
 #define MAX_DETALLES_FACTURA 20
+#define ACTIVO 1
+#define INACTIVO 0
 
 // Resultados de validarLogin
 #define CONTRA_INCORRECTA 0
-#define USUARIO_NO_ENCONTRADO (-1)
+#define USUARIO_NO_ENCONTRADO -1
 
 // Resultados de registrarUsuario
 #define EXITO 1
-#define USUARIO_EXISTE 0
-#define SIN_ESPACIO (-1)
+#define USUARIO_EXISTE 2
+#define SALIDA -1
 
 // *********************************************************************************
 // PROTOTIPOS
 // *********************************************************************************
 // USUARIOS
-int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[]);
-int validarLogin(Usuario usuarios[], int cantidadUsuarios, char nombreIngresado[], char claveIngresada[]);
-int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo[], char claveNueva[], int permiNuevo, FILE *archivoUsers);
+int buscarPosicionRegistro(FILE *archivoUsuario, char *nombre_usuario_baja);
+int validarLogin(FILE *archivoUsuarios, char *nombreUsuario, char *clave);
+int registrarUsuario(FILE *archivoUsers);
 int iniciarSesion();
-int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios);
-bool LogeoGestor(Usuario usuarios[], int cantidadUsuarios);
+int LogeoAdmin();
+bool LogeoGestor(FILE *archivoUsuarios);
 //**********************************************************************************
 // MENUS
 void MenuUsuario();
-void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios);
+void MenuAdmin();
 //**********************************************************************************
 // FUNCIONES VARIAS
-void AltaGestor(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios);
+void AltaGestor(FILE *archivoUsuarios);
 void pantallaCarga();
-void mostrarMenu(char VecMenu[][50]);
-int seleccionaItem(char VecMenu[][50]);
+void prepararConsola(void);
+void mostrarMenuAdmin(const char *titulo, const char *opciones[], int cant, int sel);
+void mostrarMenu(const char *titulo, const char *opciones[], int cant, int sel);
+int contarRegistrosUsuarios(FILE *archivoUsers);
+int elegirOpcion(const char *titulo, const char *opciones[], int cant);
+void verListadoDeProductos(FILE *archivoProductos);
 bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[], int capacidadDetalles, int *cantidadDetalles, 
-                    int *cantidadFacturas, FILE *archivoFacturas, FILE *archivoProductos); // tdv no hay archivo de facturas y prods. Por ahora se cargan manualmente
-void verListadoFacturas(Factura facturas[], int cantidadFacturas, DetalleFactura detalles[], int cantidadDetalles);
+                    int *cantidadFacturas, FILE *archivoFacturas, FILE *archivoProductos, FILE *archivoDetalles);
+void verListadoFacturas(FILE *archivoFacturas, FILE *archivoDetalles);
 
 // *********************************************************************************
 // Recorre el arreglo USUARIOS buscando un nombre que coincida con el
@@ -83,7 +87,7 @@ void prepararConsola(void)
     SetConsoleMode(hSalida, modo | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 }
 
-int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[])
+/*int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[])
 {
     int i = 0;
     int posicionEncontrada = (-1);
@@ -98,46 +102,11 @@ int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[]
     }
 
     return posicionEncontrada;
-}
+}*/
 // *********************************************************************************
 // Funciones para el menu con cursores
 // *********************************************************************************
-int elegirOpcionAdmin(const char *titulo, const char *opciones[], int cant)
-{
-    int sel = 0;
-    int tecla;
-
-    printf("\033[2J\033[?25l"); /* limpia pantalla y oculta el cursor */
-
-    do
-    {
-        mostrarMenuAdmin(titulo, opciones, cant, sel);
-        tecla = _getch();
-
-        if (tecla == 0 || tecla == 224) /* prefijo de tecla especial */
-        {
-            tecla = _getch();
-
-            if (tecla == FLECHA_ARRIBA)
-                sel = (sel == 0) ? cant - 1 : sel - 1;
-            else if (tecla == FLECHA_ABAJO)
-                sel = (sel == cant - 1) ? 0 : sel + 1;
-
-            tecla = 0; /* para que el código extendido no se confunda con Enter */
-        }
-        else if (tecla >= '1' && tecla < '1' + cant) /* atajo numérico */
-        {
-            sel = tecla - '1';
-            mostrarMenuAdmin(titulo, opciones, cant, sel);
-            tecla = ENTER;
-        }
-
-    } while (tecla != ENTER);
-
-    printf("\033[?25h"); /* vuelve a mostrar el cursor */
-    return sel + 1;
-}
-void mostrarMenuAdmin(const char *titulo, const char *opciones[], int cant, int sel)
+void mostrarMenu(const char *titulo, const char *opciones[], int cant, int sel)
 {
     int i;
 
@@ -157,75 +126,61 @@ void mostrarMenuAdmin(const char *titulo, const char *opciones[], int cant, int 
     linea(ANCHO_LINEA);
     printf(" Flechas: mover  |  Enter: elegir\n");
 }
-void mostrarMenu(char VecMenu[][50])
+
+int elegirOpcion(const char *titulo, const char *opciones[], int cant)
 {
-    int i = 0;
-    printf("\033[7m\033[33m %s \033[0m\033[27m\n", VecMenu[i]);
-    for (i = 1; i < CANT_ITEMS_MENU; i++)
-    {
-        printf("\033[33m %s \033[0m\n", VecMenu[i]);
-    }
-    linea(50);
-}
-int seleccionaItem(char VecMenu[][50])
-{
+    int sel = 0;
     int tecla;
-    int i = 0;
+
+    printf("\033[2J\033[?25l"); /* limpia pantalla y oculta el cursor */
+
     do
     {
-        tecla = getch();
+        mostrarMenu(titulo, opciones, cant, sel);
+        tecla = _getch();
 
         if (tecla == 0 || tecla == 224) /* prefijo de tecla especial */
         {
-            tecla = getch();
+            tecla = _getch();
 
-            switch (tecla)
-            {
-            case 80: /* flecha abajo */
-                /* despinta el ítem actual */
-                printf("\033[%d;1H\033[K\033[33m %s \033[0m\n", FILA_MENU + i, VecMenu[i]);
+            if (tecla == FLECHA_ARRIBA)
+                sel = (sel == 0) ? cant - 1 : sel - 1;
+            else if (tecla == FLECHA_ABAJO)
+                sel = (sel == cant - 1) ? 0 : sel + 1;
 
-                i++;
-                if (i > CANT_ITEMS_MENU - 1)
-                    i = 0;
-
-                /* pinta el nuevo ítem seleccionado */
-                printf("\033[%d;1H\033[K\033[7m\033[33m %s \033[0m\033[27m\n", FILA_MENU + i, VecMenu[i]);
-                break;
-
-            case 72: /* flecha arriba */
-                printf("\033[%d;1H\033[K\033[33m %s \033[0m\n", FILA_MENU + i, VecMenu[i]);
-
-                i--;
-                if (i < 0)
-                    i = CANT_ITEMS_MENU - 1;
-
-                printf("\033[%d;1H\033[K\033[7m\033[33m %s \033[0m\033[27m\n", FILA_MENU + i, VecMenu[i]);
-                break;
-            }
+            tecla = 0; /* para que el código extendido no se confunda con Enter */
+        }
+        else if (tecla >= '1' && tecla < '1' + cant) /* atajo numérico */
+        {
+            sel = tecla - '1';
+            mostrarMenu(titulo, opciones, cant, sel);
+            tecla = ENTER;
         }
 
-    } while (tecla != 13); /* Enter */
+    } while (tecla != ENTER);
 
-    return i;
+    printf("\033[?25h"); /* vuelve a mostrar el cursor */
+    return sel + 1;
 }
+
 // *********************************************************************************
 // Usa buscarUsuario por dentro y, si lo encuentra, compara la contraseña.
 // Devuelve el permi de la cuenta (PERMI_ADMIN o PERMI_GESTOR) si el login fue
 // exitoso, USUARIO_NO_ENCONTRADO (-1) o CONTRA_INCORRECTA (0) en caso contrario.
 // *********************************************************************************
-int validarLogin(Usuario usuarios[], int cantidadUsuarios, char nombreIngresado[], char claveIngresada[])
+int validarLogin(FILE *archivoUsuarios, char *nombreUsuario, char *clave)
 {
-    int posicion = buscarUsuario(usuarios, cantidadUsuarios, nombreIngresado);
-
+    int posicion = buscarPosicionRegistro(archivoUsuarios, nombreUsuario);
+    Usuario user;
     if (posicion == USUARIO_NO_ENCONTRADO)
     {
         return USUARIO_NO_ENCONTRADO;
     }
-
-    if (strcmp(usuarios[posicion].claveHash, claveIngresada) == 0)
+    fseek(archivoUsuarios, posicion * sizeof(Usuario), SEEK_SET);
+    fread(&user, sizeof(Usuario), 1, archivoUsuarios);
+    if ((strcmp(user.nombreUsuario, nombreUsuario) == 0) && strcmp(user.claveHash, clave) == 0)
     {
-        return usuarios[posicion].permi;
+        return user.rol_usuario;
     }
 
     return CONTRA_INCORRECTA;
@@ -235,26 +190,44 @@ int validarLogin(Usuario usuarios[], int cantidadUsuarios, char nombreIngresado[
 // Registra un usuario nuevo y actualiza la cantidad de usuarios
 // Devuelve EXITO, USUARIO_EXISTE o SIN_ESPACIO
 // *********************************************************************************
-int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo[], char claveNueva[], int permiNuevo, FILE *archivoUsers)
+int registrarUsuario(FILE *archivoUsers)
 {
-    archivoUsers = fopen(pathArchivoUsers, "rb+");
+    Usuario user;
+    Usuario busqueda;
+    user.activo = ACTIVO;
+    user.rol_usuario = PERMI_GESTOR;
 
-    if (*cantidadUsuarios >= MAX_USUARIOS)
+    leerCadena(user.nombreUsuario, LARGO_USUARIO, "Nombre de gestor (-1 para salir): ");
+    while (user.nombreUsuario[0] == '\0')
     {
-        return SIN_ESPACIO;
+        printf("El nombre no puede estar vacío.\n");
+        leerCadena(user.nombreUsuario, LARGO_USUARIO, "Nombre de gestor (-1 para salir): ");
+    }
+    if (strcmp(user.nombreUsuario, "-1") == 0)
+    {
+        return SALIDA;
     }
 
-    if (buscarUsuario(usuarios, *cantidadUsuarios, nombreNuevo) != (-1))
+    leerCadena(user.claveHash, LARGO_CLAVE, "Contraseña (-1 para salir): ");
+    while (user.claveHash[0] == '\0')
     {
-        return USUARIO_EXISTE;
+        printf("La contraseña no puede estar vacía.\n");
+        leerCadena(user.claveHash, LARGO_CLAVE, "Contraseña (-1 para salir): ");
     }
 
-    strcpy(usuarios[*cantidadUsuarios].nombreUsuario, nombreNuevo);
-    strcpy(usuarios[*cantidadUsuarios].claveHash, claveNueva);
-    usuarios[*cantidadUsuarios].permi = permiNuevo;
-    fwrite(&(usuarios[*cantidadUsuarios]), sizeof(Usuario), 1, archivoUsers);
-    (*cantidadUsuarios)++;
-    fclose(archivoUsers);
+    if (strcmp(user.claveHash, "-1") == 0)
+    {
+        return SALIDA;
+    }
+    while (fread(&busqueda, sizeof(Usuario), 1, archivoUsers)) // fread retorna 1 si esta bien, mientras que exista. cuando no haya mas que sea endoffile, termina (porque sería 0)
+    {
+        if (strcmp(busqueda.nombreUsuario, user.nombreUsuario) == 0)
+        {
+            return USUARIO_EXISTE;
+        }
+    }
+
+    fwrite(&user, sizeof(Usuario), 1, archivoUsers);
 
     return EXITO;
 }
@@ -265,16 +238,12 @@ int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo
 int iniciarSesion()
 {
     int op = 0;
+    char *menu[] = {"Administrador", "Gestor", "Salir"};
+    int cant = sizeof(menu) / sizeof(menu[0]);
 
     do
     {
-
-        printf("Seleccione su Usuario:\n");
-        printf("1- Administrador\n");
-        printf("2- Gestor\n");
-        printf("3- Salir\n");
-        leerEntero("Opción: ", &op);
-
+        op = elegirOpcion("Seleccione su usuario", menu, cant);
         if (op < op1 || op > op3)
         {
             limpiarPantalla();
@@ -293,6 +262,23 @@ int iniciarSesion()
     return CANCELAR;
 }
 
+void verListadoDeProductos(FILE *archivoProductos)
+{
+    Articulo product;
+    if (fread(&product, sizeof(Articulo), 1, archivoProductos) == 0)
+    {
+        printf("No hay productos cargados para mostrar\n");
+    }
+    printf("==============================================================\n");
+    printf("                    CONSULTA DE PRODUCTOS                     \n");
+    printf("==============================================================\n");
+    printf("%-6s %-22s %-10s %8s %10s\n", "COD", "NOMBRE", "STOCK", "PRECIO", "CANTIDAD VENDIDA" , "ESTADO");
+    while (fread(&product, sizeof(Articulo), 1, archivoProductos) == 1) // significa que mientras que haya registro
+    {
+        printf("%-6d %-22s %-10s %8d %10.2f %d %d\n", product.codigo, product.descripcion, product.stock, product.precio,product.cantVendida, product.estado);
+    }
+}
+
 // *********************************************************************************
 // MENÚ GESTOR
 // *********************************************************************************
@@ -300,183 +286,216 @@ int iniciarSesion()
 void MenuUsuario()
 {
     int op = 0;
-    int siguienteNroFactura = 1;
-    Factura facturaActual = {0};
-    DetalleFactura detallesFactura[MAX_DETALLES_FACTURA];
-    int cantidadDetallesFactura = 0;
-    int cantidadFacturas = 0;
-    char VecMenuPrincipal[4][50] = {"1. Facturas", "2. Estadisticas", "3. Productos", "0. Salir"};
-    // char vecMenuFacturas[4][50];
-    // char vecMenuEstadisticas[4][50];
-    // char vecMenuProductos[4][50];
+    char *VecMenuPrincipal[] = {"Facturas", "Estadisticas", "Productos", "Salir"};
+    char *vecMenuFacturas[] = {"Generar nueva factura", "Ver listado de facturas", "Eliminar factura de la base de datos", "Ver listado de clientes", "Agregar cliente", "Eliminar cliente", "Modificar cliente", "Volver"};
+    char *vecMenuEstadisticas[] = {"Ver producto estrella", "Ver producto mas vendido", "Ver mejores clientes", "Ver ventas por zona", "Volver"};
+    char *vecMenuProductos[] = {"Ver listado de productos", "Agregar producto nuevo", "Ver listado de materia prima", "Agregar materia prima", "Eliminar materia prima", "Volver"};
+
+    utf8();
     limpiarPantalla();
-    printf("----Bienvenide Gestor----\n");
+    int cantOpcionesMenuPrincipal = sizeof(VecMenuPrincipal) / sizeof(VecMenuPrincipal[0]);
+    int cantOpcionesFacturas = sizeof(vecMenuFacturas) / sizeof(vecMenuFacturas[0]);
+    int cantOpcionesEstadisticas = sizeof(vecMenuEstadisticas) / sizeof(vecMenuEstadisticas[0]);
+    int cantOpcionesProductos = sizeof(vecMenuProductos) / sizeof(vecMenuProductos[0]);
+    prepararConsola();
+
     do
     {
-        printf("\n");
-        mostrarMenu(VecMenuPrincipal);
-        int indice = seleccionaItem(VecMenuPrincipal);
-        op = (indice + 1) % CANT_ITEMS_MENU;
         limpiarPantalla();
+        op = elegirOpcion("Menu Gestor", VecMenuPrincipal, cantOpcionesMenuPrincipal);
+
         switch (op)
         {
         case op1:
-            limpiarPantalla();
-            printf("\nSECCION FACTURAS\n");
-            printf("\n");
-            printf("1. Generar nueva factura\n");
-            printf("2. Ver listado de facturas\n");
-            printf("3. Eliminar factura de la base de datos\n");
-            printf("4. Ver listado de clientes\n");
-            printf("5. Agregar cliente\n");
-            printf("6. Eliminar cliente\n");
-            printf("7. Modificar cliente\n");
-            printf("0. Volver\n");
-            leerEntero("Seleccione una opción: ", &op);
-            switch (op)
-            {
-            case op1:
-                limpiarPantalla();
-                if (generarFactura(siguienteNroFactura, &facturaActual, detallesFactura,
-                                   MAX_DETALLES_FACTURA, &cantidadDetallesFactura,
-                                   &cantidadFacturas, NULL, NULL))
-                {
-                    siguienteNroFactura++;
-                }
-                break;
-            case op2:
-                limpiarPantalla();
-                verListadoFacturas(&facturaActual, cantidadFacturas,
-                                   detallesFactura, cantidadDetallesFactura);
-                break;
-            case op3:
-                limpiarPantalla();
-                printf("CREAR FUNCION ELIMINAR FACTURA DE LA BD");
-                break;
-            case op4:
-                limpiarPantalla();
-                printf("CREAR FUNCION VER LISTADO DE CLIENTES");
-                break;
-            case op5:
-                limpiarPantalla();
-                printf("CREAR FUNCION AGREGAR CLIENTE");
-                break;
-            case op6:
-                limpiarPantalla();
-                printf("CREAR FUNCION ELIMINAR CLIENTE");
-                break;
-            case op7:
-                limpiarPantalla();
-                printf("CREAR FUNCION MODIFICAR CLIENTE");
-                break;
-            case SALIR:
-                printf("\nVolviendo...\n");
-                break;
 
-            default:
-                printf("Error: Fuera de rango. Reintente.\n");
-                break;
-            }
-            pausa();
+            printf("\n");
+
+            op = elegirOpcion("SECCION FACTURAS", vecMenuFacturas, cantOpcionesFacturas);
+
+            do
+            {
+                switch (op)
+                {
+                case op1:
+                {
+                    FILE *archivoFacturas;
+                    FILE *archivoProductos;
+                    FILE *archivoDetalles;
+                    Factura facturaActual = {0};
+                    Factura facturaGuardada;
+                    DetalleFactura detallesFactura[MAX_DETALLES_FACTURA];
+                    int cantidadDetallesFactura = 0;
+                    int cantidadFacturas = 0;
+                    int siguienteNroFactura = 1;
+
+                    limpiarPantalla();
+                    archivoFacturas = fopen("bd_Facturas.dat", "rb+");
+                    if (archivoFacturas == NULL)
+                    {
+                        archivoFacturas = fopen("bd_Facturas.dat", "wb+");
+                    }
+                    archivoProductos = fopen("bd_Products.dat", "rb");
+                    archivoDetalles = fopen("bd_Detalles.dat", "ab+");
+
+                    if (archivoFacturas == NULL)
+                    {
+                        printf("No se pudo abrir el archivo de facturas.\n");
+                    }
+                    else if (archivoProductos == NULL)
+                    {
+                        printf("No se pudo abrir el archivo de productos. Cargue productos antes de generar facturas.\n");
+                    }
+                    else if (archivoDetalles == NULL)
+                    {
+                        printf("No se pudo abrir el archivo de detalles de facturas.\n");
+                    }
+                    else
+                    {
+                        rewind(archivoFacturas);
+                        while (fread(&facturaGuardada, sizeof(Factura), 1, archivoFacturas) == 1)
+                        {
+                            cantidadFacturas++;
+                            if (facturaGuardada.nroFactura >= siguienteNroFactura)
+                            {
+                                siguienteNroFactura = facturaGuardada.nroFactura + 1;
+                            }
+                        }
+
+                        if (ferror(archivoFacturas))
+                        {
+                            printf("No se pudo leer el archivo de facturas.\n");
+                        }
+                        else if (generarFactura(siguienteNroFactura, &facturaActual, detallesFactura,
+                                                MAX_DETALLES_FACTURA, &cantidadDetallesFactura,
+                                                &cantidadFacturas, archivoFacturas, archivoProductos, archivoDetalles))
+                        {
+                            printf("\nFactura guardada correctamente.\n");
+                        }
+                    }
+
+                    if (archivoProductos != NULL)
+                    {
+                        fclose(archivoProductos);
+                    }
+                    if (archivoFacturas != NULL)
+                    {
+                        fclose(archivoFacturas);
+                    }
+                    if (archivoDetalles != NULL)
+                    {
+                        fclose(archivoDetalles);
+                    }
+                    break;
+                }
+                case op2:
+                    limpiarPantalla();
+                    {
+                        FILE *archivoFacturas = fopen("bd_Facturas.dat", "rb");
+                        FILE *archivoDetalles = fopen("bd_Detalles.dat", "rb");
+
+                        if (archivoFacturas == NULL)
+                        {
+                            printf("No hay facturas para mostrar.\n");
+                        }
+                        else
+                        {
+                            verListadoFacturas(archivoFacturas, archivoDetalles);
+                        }
+
+                        if (archivoDetalles == NULL && archivoFacturas != NULL)
+                        {
+                            printf("No se pudo abrir el archivo de detalles de facturas.\n");
+                        }
+                        if (archivoFacturas != NULL)
+                        {
+                            fclose(archivoFacturas);
+                        }
+                        if (archivoDetalles != NULL)
+                        {
+                            fclose(archivoDetalles);
+                        }
+                    }
+                    break;
+                case op3:
+                    printf("CREAR FUNCION ELIMINAR FACTURA DE LA BD");
+                    break;
+                case op4:
+                    printf("CREAR FUNCION VER LISTADO DE CLIENTES");
+                    break;
+                case op5:
+                    printf("CREAR FUNCION AGREGAR CLIENTE");
+                    break;
+                case op6:
+                    printf("CREAR FUNCION ELIMINAR CLIENTE");
+                    break;
+                case op7:
+                    printf("CREAR FUNCION MODIFICAR CLIENTE");
+                    break;
+                }
+                if (op != cantOpcionesFacturas)
+                    pausa();
+            } while (op != cantOpcionesFacturas);
             break;
-        case op2:
-            limpiarPantalla();
-            printf("\nSECCION ESTADISTICAS\n");
-            printf("\n");
-            printf("1. Ver producto estrella\n");
-            printf("2. Ver producto mas vendido\n");
-            printf("3. Ver mejores clientes\n");
-            printf("4. Ver ventas por zona\n");
-            printf("0-Volver\n");
-            leerEntero("Seleccione una opción: ", &op);
-            switch (op)
-            {
-            case op1:
-            {
-                limpiarPantalla();
-                // Producto que genera más ganancias
-                /*char *productoEstrella = buscarProductoEstrella(productos, cantidadProductos, detalles, cantidadDetalles);
-                if (productoEstrella != NULL)
-                {
-                    printf("El producto estrella es: %s\n", productoEstrella);
-                }
-                else
-                {
-                    printf("No se encontraron productos o detalles de facturas.\n");
-                }*/
-                printf("Desarrollar ver producto estrella\n");
-                break;
-            }
-            case op2:
-                limpiarPantalla();
-                printf("Desarrollar ver producto mas vendido\n");
-                break;
-            case op3:
-                limpiarPantalla();
-                printf("Desarrollar ver mejores clientes SEGUN CRITERIO MENSAJE LUANA EN EL GRUPO\n");
-                break;
-            case op4:
-                limpiarPantalla();
-                printf("Desarrollar ver ventas por zona");
-                break;
-            case SALIR:
-                printf("Volviendo\n");
-                break;
 
-            default:
-                printf("Error: Fuera de rango. Reintente.\n");
-                break;
-            }
-            pausa();
+        case op2:
+
+            op = elegirOpcion("SECCION ESTADISTICAS", vecMenuEstadisticas, cantOpcionesEstadisticas);
+            do
+            {
+                switch (op)
+                {
+                case op1:
+                    printf("Desarrollar ver producto estrella\n");
+                    break;
+                case op2:
+                    printf("Desarrollar ver producto mas vendido\n");
+                    break;
+                case op3:
+                    printf("Desarrollar ver mejores clientes SEGUN CRITERIO MENSAJE LUANA EN EL GRUPO\n");
+                    break;
+                case op4:
+                    printf("Desarrollar ver ventas por zona");
+                    break;
+                }
+                if (op != cantOpcionesEstadisticas)
+                    pausa();
+            } while (op != cantOpcionesEstadisticas);
             break;
         case op3:
-            limpiarPantalla();
-            printf("\nSECCION PRODUCTOS");
-            printf("1. Ver listado de productos\n");
-            printf("2. Agregar producto nuevo\n");
-            printf("3. Ver listado de materia prima\n");
-            printf("4. Agregar materia prima\n");
-            printf("5. Eliminar materia prima\n");
-            printf("6. Volver\n");
-            leerEntero("Seleccione una opción: ", &op);
-            switch (op)
-            {
-            case op1:
-                limpiarPantalla();
-                printf("Desarrollar ver listado de productos\n");
-                break;
-            case op2:
-                limpiarPantalla();
-                printf("Desarrollar agregar producto nuevo\n");
-                break;
-            case op3:
-                limpiarPantalla();
-                printf("Desarrollar ver listado de materia prima\n");
-                break;
-            case op4:
-                limpiarPantalla();
-                printf("Desarrollar agregar materia prima\n");
-                break;
-            case op5:
-                limpiarPantalla();
-                printf("Desarrollar eliminar materia prima\n");
-                break;
-            case SALIR:
-                printf("Volviendo....");
+            op = elegirOpcion("SECCION PRODUCTOS", vecMenuProductos, cantOpcionesProductos);
+            FILE *archivoProductos; // creacion y apertura del archivo de productos. Si existe lo abre, si no existe lo crea
 
-            default:
-                printf("Error: Fuera de rango. Reintente.\n");
-                break;
+            if ((archivoProductos = fopen("bd_Products.dat", "rb+")) == NULL)
+            {
+                archivoProductos = fopen("bd_Products.dat", "wb+");
             }
-            pausa();
-            break;
-        default:
-            printf("Error: Fuera de rango. Reintente.\n");
+            do
+            {
+                switch (op)
+                {
+                case op1:
+                    verListadoDeProductos(archivoProductos);
+                    break;
+                case op2:
+                    printf("Desarrollar agregar producto nuevo\n");
+                    break;
+                case op3:
+                    printf("Dar de baja producto \n");
+                    break;
+                default:
+                    printf("Error: Fuera de rango. Reintente.\n");
+                    break;
+                }
+                if (op != cantOpcionesProductos)
+                    pausa();
+
+            } while (op != cantOpcionesProductos);
+            fclose(archivoProductos);
             break;
         }
-        limpiarPantalla();
-    } while (op != SALIR);
-
+        if (op != cantOpcionesMenuPrincipal)
+            pausa();
+    } while (op != cantOpcionesMenuPrincipal);
 }
 
 // *********************************************************************************
@@ -484,135 +503,124 @@ void MenuUsuario()
 // Usa buffers propios: antes pisaba la variable "clave" de LogeoAdmin con la
 // contraseña del gestor, y eso rompía la condición del ciclo de login.
 // *********************************************************************************
-void AltaGestor(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios)
+void AltaGestor(FILE *archivoUsuarios)
 {
-    char nombre[LARGO_USUARIO];
-    char clave[LARGO_CLAVE];
-    bool registroResuelto = false;
 
     printf("**********Registrar Gestor**********\n\n");
-    do
-    {
-        leerCadena(nombre, LARGO_USUARIO, "Nombre de gestor (-1 para salir): ");
-        if (strcmp(nombre, "-1") == 0)
-        {
-            registroResuelto = true;
-        }
-        else if (nombre[0] == '\0')
-        {
-            printf("El nombre no puede estar vacío.\n");
-        }
-        else
-        {
-            leerCadena(clave, LARGO_CLAVE, "Contraseña (-1 para salir): ");
-            if (strcmp(clave, "-1") == 0)
-            {
-                registroResuelto = true;
-            }
-            else if (clave[0] == '\0')
-            {
-                printf("La contraseña no puede estar vacía.\n");
-            }
-            else
-            {
-                int resultado = registrarUsuario(usuarios, cantidadUsuarios, nombre, clave, PERMI_GESTOR, archivoUsuarios);
-                if (resultado == SIN_ESPACIO)
-                {
-                    printf("ERROR: sin espacio para mas usuarios\n");
-                    registroResuelto = true;
-                }
-                else if (resultado == USUARIO_EXISTE)
-                {
-                    printf("Usuario ya existente, reintente\n");
-                }
-                else
-                {
-                    printf("\n¡Registro exitoso!\n");
-                    registroResuelto = true;
-                }
-            }
-        }
-    } while (!registroResuelto);
-    pausa();
-}
 
-void BajaGestor(Usuario usuarios[], int *cantidadUsuarios)
-{
-    printf("**********Dar de baja un Gestor**********\n\n");
-    char nombre[LARGO_USUARIO];
-    leerCadena(nombre, LARGO_USUARIO, "Ingrese el nombre del gestor a dar de baja (-1 para salir): ");
-    if (strcmp(nombre, "-1") == 0)
+    int resultado = registrarUsuario(archivoUsuarios);
+
+    if (resultado == USUARIO_EXISTE)
     {
-        printf("Operación cancelada.\n");
-        pausa();
+        printf("Usuario ya existente, reintente\n");
     }
-    else if (strcmp(nombre, "admin") == 0)
+    else if (resultado == SALIDA)
     {
-        printf("No se puede dar de baja al administrador.\n");
-        pausa();
+        printf("No se registro el usario (cancelado)");
     }
     else
     {
-        int posicion = buscarUsuario(usuarios, *cantidadUsuarios, nombre);
-        if (posicion == -1)
+        printf("\n¡Registro exitoso!\n");
+    }
+
+    pausa();
+}
+
+int buscarPosicionRegistro(FILE *archivoUsuario, char *nombre_usuario_baja)
+{
+    Usuario user;
+    int posicion = 0;
+    if (strcmp(nombre_usuario_baja, "-1") == 0)
+    {
+        return SALIDA;
+    }
+    while (fread(&user, sizeof(Usuario), 1, archivoUsuario)) // fread retorna 1 si esta bien, mientras que exista. cuando no haya mas que sea endoffile, termina (porque sería 0)
+    {
+
+        if (strcmp(user.nombreUsuario, nombre_usuario_baja) == 0)
         {
-            printf("Gestor no encontrado.\n");
-            pausa();
+            return posicion;
         }
         else
         {
-            // Mover todos los usuarios posteriores una posición hacia atrás
-            for (int i = posicion; i < *cantidadUsuarios - 1; i++)
-            {
-                usuarios[i] = usuarios[i + 1];
-            }
-            (*cantidadUsuarios)--;
-            printf("Gestor dado de baja exitosamente.\n");
-            pausa();
+            return USUARIO_NO_ENCONTRADO;
         }
+        posicion++;
     }
 }
+
+void BajaGestor(FILE *archivoUsuarios)
+{
+    printf("**********Dar de baja un Gestor**********\n\n");
+    char nombre[LARGO_USUARIO];
+    int posicionRegistro = 0;
+    Usuario user;
+    leerCadena(nombre, LARGO_USUARIO, "Ingrese el nombre del gestor a dar de baja (-1 para salir): ");
+    while (nombre[0] == '\0')
+    {
+        printf("El nombre no puede estar vacío.\n");
+        leerCadena(nombre, LARGO_USUARIO, "Ingrese el nombre del gestor a dar de baja (-1 para salir):  ");
+    }
+    if (strcmp(nombre, "-1") == 0)
+    {
+        printf("No se registró el usuario (cancelado)\n");
+    }
+    posicionRegistro = buscarPosicionRegistro(archivoUsuarios, nombre);
+    if (posicionRegistro == USUARIO_NO_ENCONTRADO)
+    {
+        printf("No se ha encontrado el usuario\n");
+    }
+    else
+    {
+        fseek(archivoUsuarios, posicionRegistro * sizeof(Usuario), SEEK_SET);
+        fread(&user, sizeof(Usuario), 1, archivoUsuarios);
+        user.activo = INACTIVO; // se trabaja una BAJA LOGICA, no estamos borrando por completo el registro ya que no hay manera de deshacerlo. la buena practica es desactivar registros, no eliminarlos por completo
+        printf("Gestor desactivado correctamente\n");
+    }
+}
+
 // *********************************************************************************
 // MENÚ ADMIN
 // *********************************************************************************
-void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios)
+void MenuAdmin()
 {
-    int op = 0;
+    FILE *archivoUsuarios;
+    if ((archivoUsuarios = fopen("bd_Users.dat", "rb+")) == NULL)
+    {
+        archivoUsuarios = fopen("bd_Users.dat", "wb+");
+    }
 
-    utf8();
+    int op = 0;
+    // char vecMenuAdministrador[4][50]= {"1. Dar de alta a un gestor\n", "2. Dar de baja a un gestor\n", "0.Salir"};
+    const char *menu[] = {"Dar de alta a un gestor\n",
+                          "Dar de baja a un gestor\n",
+                          "Salir"};
+    int cant = sizeof(menu) / sizeof(menu[0]);
+    prepararConsola();
+    // abrir archivo de usuarios
+
     do
     {
-        limpiarPantalla();
-        printf("---- Menu de Administrador ----\n");
-        printf("\n");
-        printf("1. Dar de alta a un gestor\n");
-        printf("2. Dar de baja a un gestor\n");
-        printf("0. Salir\n");
 
-        // arreglar menu con cursores
-        // mostrarMenu(VecMenuPrincipal);
-        // indice = seleccionaItem(VecMenuPrincipal);
-        // op = (indice + 1) % CANT_ITEMS_MENU;
-        leerEntero("Ingrese una opcion: ", &op);
+        op = elegirOpcion("Menu Administrador", menu, cant);
+
         switch (op)
         {
         case op1:
             limpiarPantalla();
-            AltaGestor(usuarios, cantidadUsuarios, archivoUsuarios);
+            AltaGestor(archivoUsuarios);
+
             break;
         case op2:
             limpiarPantalla();
-            BajaGestor(usuarios, cantidadUsuarios);
-            break;
-        case SALIR:
-            printf("\nVolviendo...\n");
-            break;
-        default:
-            printf("\nError: Fuera de rango. Reintente.\n");
-            pausa(); // sin esto el limpiarPantalla() del ciclo borra el mensaje
+            BajaGestor(archivoUsuarios);
+
             break;
         }
-    } while (op != SALIR);
+        if (op != cant)
+            pausa();
+    } while (op != cant);
+    fclose(archivoUsuarios);
 }
 
 // *********************************************************************************
@@ -620,7 +628,7 @@ void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios)
 // Devuelve CANCELAR si se agotaron los intentos (cierra el programa),
 // 0 en cualquier otro caso (vuelve a la pantalla de selección de rol).
 // *********************************************************************************
-int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios)
+int LogeoAdmin()
 {
     int intentos = MAXIMO_INTENTOS;
     char clave[LARGO_CLAVE];
@@ -639,7 +647,7 @@ int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios)
         if (strcmp(clave, CLAVE_ADMIN) == 0)
         {
             limpiarPantalla();
-            MenuAdmin(usuarios, cantidadUsuarios, archivoUsuarios);
+            MenuAdmin();
             return 0;
         }
 
@@ -657,16 +665,29 @@ int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios)
     return CANCELAR;
 }
 
+int contarRegistrosUsuarios(FILE *archivoUsers)
+{
+    int cantidad = 0;
+    Usuario user;
+    while (fread(&user, sizeof(Usuario), 1, archivoUsers))
+    {
+        cantidad++;
+    }
+    return cantidad;
+}
+
 // *********************************************************************************
 // LOGUEO GESTOR
 // Valida usuario y contraseña contra el arreglo de usuarios (usa validarLogin).
 // Devuelve true si el login fue exitoso.
 // *********************************************************************************
-bool LogeoGestor(Usuario usuarios[], int cantidadUsuarios)
+bool LogeoGestor(FILE *archivoUsuarios)
 {
     char nombre[LARGO_USUARIO];
     char clave[LARGO_CLAVE];
     int intentos = MAXIMO_INTENTOS;
+    int cantidadUsuarios = 0;
+    cantidadUsuarios = contarRegistrosUsuarios(archivoUsuarios);
 
     if (cantidadUsuarios == 0)
     {
@@ -684,7 +705,7 @@ bool LogeoGestor(Usuario usuarios[], int cantidadUsuarios)
         }
         leerCadena(clave, LARGO_CLAVE, "Contraseña: ");
 
-        if (validarLogin(usuarios, cantidadUsuarios, nombre, clave) == PERMI_GESTOR)
+        if (validarLogin(archivoUsuarios, nombre, clave) == PERMI_GESTOR)
         {
             return true;
         }
@@ -731,9 +752,10 @@ void mostrar_pose2() // FIGURA PRUEBA
 }
 void pantallaCarga()
 {
-    int i = 0;
+    int i;
+    int cantVueltas = 2; // Número de veces que se alternarán las poses
 
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < cantVueltas; i++)
     {
         limpiarPantalla();
         mostrar_pose1();
@@ -744,48 +766,8 @@ void pantallaCarga()
     }
 }
 
-// Buscar el producto con mayor importe vendido (precio por cantidad vendida).
-/* char *buscarProductoEstrella(Articulo productos[], int cantidadProductos, DetalleFactura detalles[], int cantidadDetalles)
-{
-    if (cantidadProductos <= 0 || cantidadDetalles <= 0)
-    {
-        return NULL;
-    }
-
-    Articulo *productoEstrella = NULL;
-    float mayorImporteVendido = 0.0;
-
-    for (int i = 0; i < cantidadProductos; i++)
-    {
-        int cantidadVendida = 0;
-        for (int j = 0; j < cantidadDetalles; j++)
-        {
-            if (detalles[j].codigoArticulo == productos[i].codigo)
-            {
-                cantidadVendida += detalles[j].cantidad;
-            }
-        }
-
-        float importeVendido = productos[i].precio * cantidadVendida;
-        if (cantidadVendida > 0 && (productoEstrella == NULL || importeVendido > mayorImporteVendido))
-        {
-            productoEstrella = &productos[i];
-            mayorImporteVendido = importeVendido;
-        }
-    }
-
-    if (productoEstrella != NULL)
-    {
-        return productoEstrella->descripcion;
-    }
-    else
-    {
-        return NULL;
-    }
-} */
-
 // Carga los datos del cliente y sus productos, calcula los importes y devuelve si se genero la factura.
-bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[], int capacidadDetalles, int *cantidadDetalles, int *cantidadFacturas, FILE *archivoFacturas, FILE *archivoProductos)
+bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[], int capacidadDetalles, int *cantidadDetalles, int *cantidadFacturas, FILE *archivoFacturas, FILE *archivoProductos, FILE *archivoDetalles)
 {
     // Inicializo las variables
     Factura nuevaFactura = {0};
@@ -795,49 +777,54 @@ bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[],
     time_t ahora;
     struct tm *fechaActual;
 
-    if (factura == NULL || detalles == NULL || cantidadDetalles == NULL || nroFactura <= 0 || capacidadDetalles <= 0)
+    if (factura == NULL || detalles == NULL || cantidadDetalles == NULL || cantidadFacturas == NULL ||
+        archivoFacturas == NULL || archivoProductos == NULL || archivoDetalles == NULL ||
+        nroFactura <= 0 || capacidadDetalles <= 0)
     {
         printf("No se puede generar la factura: los datos recibidos no son válidos.\n");
     }
     else
     {
 
-        *cantidadDetalles = 0;
-        nuevaFactura.nroFactura = nroFactura;
+        *cantidadDetalles = 0; // Inicializo la cantidad de detalles en 0 antes de comenzar a cargar la factura
+        nuevaFactura.nroFactura = nroFactura; // Asigno el número de factura recibido como parámetro a la nueva factura
 
         do
         {
-            leerEntero("Ingrese el código del cliente: ", &nuevaFactura.codigoCliente);
-            if (nuevaFactura.codigoCliente <= 0)
+            leerEntero("Ingrese el código del cliente: ", &nuevaFactura.codigoCliente); // Solicito al usuario que ingrese el código del cliente y lo almaceno en la nueva factura
+            if (nuevaFactura.codigoCliente <= 0) // Valido que el código del cliente sea mayor que cero, ya que no puede ser negativo ni cero
             {
-                printf("El código del cliente debe ser mayor que cero.\n");
+                printf("El código del cliente debe ser mayor que cero.\n"); 
             }
-        } while (nuevaFactura.codigoCliente <= 0);
+        } while (nuevaFactura.codigoCliente <= 0); // Repetir la solicitud hasta que se ingrese un código válido
 
-        leerCadena(nuevaFactura.clienteSnapshot.nombreYApellido, LARGO_NOMBRE, "Ingrese el nombre del cliente: ");
+        do
+        {
+            leerCadena(nuevaFactura.clienteSnapshot.nombreYApellido, LARGO_NOMBRE, "Ingrese el nombre del cliente: "); // Solicito al usuario que ingrese el nombre del cliente y lo almaceno en la nueva factura
+        } while (nuevaFactura.clienteSnapshot.nombreYApellido[0] == '\0');
         printf("\n");
         nuevaFactura.alicuotaIVA = 0;
         nuevaFactura.importeIVA = 0;
-        nuevaFactura.estado = FACTURA_EMITIDA;
+        nuevaFactura.estado = FACTURA_EMITIDA; // Asigno el estado de la factura como emitida, ya que se está generando una nueva factura
 
-        ahora = time(NULL);
-        fechaActual = localtime(&ahora);
+        ahora = time(NULL); // Obtengo la fecha y hora actual del sistema
+        fechaActual = localtime(&ahora); // Convierto la fecha y hora actual a una estructura de tiempo local
 
-        if (fechaActual == NULL)
+        if (fechaActual == NULL) // Verifico si la conversión a tiempo local fue exitosa
         {
             printf("No se pudo obtener la fecha de emisión.\n");
         }
-        else
+        else // Si la conversión fue exitosa, asigno los valores de día, mes y año a la fecha de emisión de la nueva factura
         {
             nuevaFactura.fechaEmision.dia = fechaActual->tm_mday;
             nuevaFactura.fechaEmision.mes = fechaActual->tm_mon + 1;
             nuevaFactura.fechaEmision.anio = fechaActual->tm_year + 1900;
 
-            int codigoIngresado = 0;
+            int codigoIngresado = 0; // Variable para almacenar el código del producto ingresado por el usuario
             do
             {
-                DetalleFactura detalle = {0};
-                float precioUnitario = 0;
+                DetalleFactura detalle = {0}; // Inicializo la estructura de detalle de factura para almacenar los datos del producto ingresado
+                float precioUnitario = 0; //
                 float nuevoNeto = 0;
                 bool lineaValida = true;
 
@@ -853,46 +840,51 @@ bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[],
                         lineaValida = false;
                     }
 
-                    if (lineaValida) /* Validación de la descripción del producto temporal x falta de arichivo de prods, de haber archivo de productos, 
-                                        se podría validar que el código ingresado exista y traer la descripción desde el archivo. */
+                    if (lineaValida)
                     {
-                        leerCadena(detalle.descripcion, LARGO_DESC, "Ingrese la descripción del producto: ");
-                        printf("\n");
-                        if (detalle.descripcion[0] == '\0')
+                        Articulo producto = {0};
+                        bool productoEncontrado = false;
+
+                        rewind(archivoProductos);
+                        while (fread(&producto, sizeof(Articulo), 1, archivoProductos) == 1)
                         {
-                            printf("La descripción no puede estar vacía.\n");
-                            lineaValida = false;
+                            if (producto.codigo == codigoIngresado)
+                            {
+                                productoEncontrado = true;
+                                break;
+                            }
                         }
 
-                        //validación de la descripción del producto si hubiera archivos.
-
-                    }
-
-                    if (lineaValida) /* Validación de precio unitario y cantidad temporal x falta de archivo de prods, de haber archivo de productos, 
-                                       se podría validar que el código ingresado exista y traer el precio desde el archivo. */
-                    {
-                        do
+                        if (ferror(archivoProductos))
                         {
-                            leerFlotante("Ingrese el precio unitario: $", &precioUnitario);
-                            if (precioUnitario < 0)
-                            {
-                                printf("El precio no puede ser negativo.\n");
-                            }
-                        } while (precioUnitario < 0);
+                            printf("No se pudo leer el archivo de productos.\n");
+                            return false;
+                        }
 
-                        do
+                        if (!productoEncontrado)
                         {
-                            leerEntero("Ingrese la cantidad: ", &detalle.cantidad);
-                            if (detalle.cantidad <= 0)
-                            {
-                                printf("La cantidad debe ser mayor que cero.\n");
-                            }
-                        } while (detalle.cantidad <= 0);
+                            printf("No existe un producto con el código ingresado. Intente nuevamente.\n");
+                            lineaValida = false;
+                        }
+                        else
+                        {
+                            memcpy(detalle.descripcion, producto.descripcion, sizeof(detalle.descripcion));
+                            detalle.descripcion[sizeof(detalle.descripcion) - 1] = '\0';
+                            detalle.precioUnitario = producto.precio;
 
-                        detalle.nroFactura = nroFactura;
-                        detalle.precioUnitario = precioUnitario;
-                        detalle.subtotalLinea = precioUnitario * detalle.cantidad;
-                        nuevoNeto = netoGravado + detalle.subtotalLinea;
+                            do
+                            {
+                                leerEntero("Ingrese la cantidad: ", &detalle.cantidad);
+                                if (detalle.cantidad <= 0)
+                                {
+                                    printf("La cantidad debe ser mayor que cero.\n");
+                                }
+                            } while (detalle.cantidad <= 0);
+
+                            detalle.nroFactura = nroFactura;
+                            detalle.subtotalLinea = detalle.precioUnitario * detalle.cantidad;
+                            nuevoNeto = netoGravado + detalle.subtotalLinea;
+                        }
                     }
 
                     if (lineaValida)
@@ -913,22 +905,35 @@ bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[],
             {
                 nuevaFactura.netoGravado = netoGravado;
                 nuevaFactura.totalFactura = netoGravado + nuevaFactura.importeIVA;
-                *factura = nuevaFactura;
-                *cantidadDetalles = cantidadLineas;
 
-                printf("\nFactura N° %d generada el %02d/%02d/%04d\n",
-                       factura->nroFactura, factura->fechaEmision.dia, factura->fechaEmision.mes, factura->fechaEmision.anio);
-                printf("Cliente: %d - %s\n", factura->codigoCliente, factura->clienteSnapshot.nombreYApellido);
-                printf("%-10s | %-50s | %17s | %10s | %12s\n", "Código", "Descripción", "Precio unitario", "Cantidad", "Total");
-                for (int i = 0; i < cantidadLineas; i++) // Recorre los detalles de la factura
+                if (fseek(archivoDetalles, 0, SEEK_END) != 0 ||
+                    fwrite(detalles, sizeof(DetalleFactura), cantidadLineas, archivoDetalles) != (size_t)cantidadLineas ||
+                    fflush(archivoDetalles) != 0 ||
+                    fseek(archivoFacturas, 0, SEEK_END) != 0 ||
+                    fwrite(&nuevaFactura, sizeof(Factura), 1, archivoFacturas) != 1 ||
+                    fflush(archivoFacturas) != 0)
                 {
-                    printf("%-10d | %-50s | $%16.2f | %10d | $%11.2f\n",
-                           detalles[i].codigoArticulo, detalles[i].descripcion,
-                           detalles[i].precioUnitario, detalles[i].cantidad, detalles[i].subtotalLinea);
+                    printf("No se pudo guardar la factura y sus detalles en los archivos.\n");
                 }
-                printf("Total de la factura: $%.2f\n", factura->totalFactura);
-                (*cantidadFacturas)++;
-                facturaGenerada = true;
+                else
+                {
+                    *factura = nuevaFactura;
+                    *cantidadDetalles = cantidadLineas;
+
+                    printf("\nFactura N° %d generada el %02d/%02d/%04d\n",
+                           factura->nroFactura, factura->fechaEmision.dia, factura->fechaEmision.mes, factura->fechaEmision.anio);
+                    printf("Cliente: %d - %s\n", factura->codigoCliente, factura->clienteSnapshot.nombreYApellido);
+                    printf("%-10s | %-50s | %17s | %10s | %12s\n", "Código", "Descripción", "Precio unitario", "Cantidad", "Total");
+                    for (int i = 0; i < cantidadLineas; i++) // Recorre los detalles de la factura
+                    {
+                        printf("%-10d | %-50s | $%16.2f | %10d | $%11.2f\n",
+                               detalles[i].codigoArticulo, detalles[i].descripcion,
+                               detalles[i].precioUnitario, detalles[i].cantidad, detalles[i].subtotalLinea);
+                    }
+                    printf("Total de la factura: $%.2f\n", factura->totalFactura);
+                    (*cantidadFacturas)++;
+                    facturaGenerada = true;
+                }
             }
         }
     }
@@ -936,32 +941,56 @@ bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[],
     return facturaGenerada;
 }
 
-void verListadoFacturas(Factura facturas[], int cantidadFacturas, DetalleFactura detalles[], int cantidadDetalles)
+void verListadoFacturas(FILE *archivoFacturas, FILE *archivoDetalles)
 {
-    if (cantidadFacturas <= 0)
+    Factura factura;
+    DetalleFactura detalle;
+    int cantidadFacturas = 0;
+
+    if (archivoFacturas == NULL)
     {
-        printf("No hay facturas para mostrar.\n");
+        printf("No se pudo leer el archivo de facturas.\n");
+        return;
     }
-    else
+
+    rewind(archivoFacturas);
+    while (fread(&factura, sizeof(Factura), 1, archivoFacturas) == 1)
     {
-        for (int i = 0; i < cantidadFacturas; i++)
+        cantidadFacturas++;
+        printf("\nFactura N° %d - Fecha: %02d/%02d/%04d - Cliente: %d - %s\n",
+               factura.nroFactura, factura.fechaEmision.dia, factura.fechaEmision.mes,
+               factura.fechaEmision.anio, factura.codigoCliente, factura.clienteSnapshot.nombreYApellido);
+        printf("%-10s | %-50s | %17s | %10s | %12s\n", "Código", "Descripción", "Precio unitario", "Cantidad", "Total");
+
+        if (archivoDetalles != NULL)
         {
-            Factura factura = facturas[i];
-            printf("\nFactura N° %d - Fecha: %02d/%02d/%04d - Cliente: %d\n",
-                   factura.nroFactura, factura.fechaEmision.dia, factura.fechaEmision.mes,
-                   factura.fechaEmision.anio, factura.codigoCliente);
-            printf("%-10s | %-50s | %17s | %10s | %12s\n", "Código", "Descripción", "Precio unitario", "Cantidad", "Total");
-            for (int j = 0; j < cantidadDetalles; j++)
+            rewind(archivoDetalles);
+            while (fread(&detalle, sizeof(DetalleFactura), 1, archivoDetalles) == 1)
             {
-                if (detalles[j].nroFactura == factura.nroFactura)
+                if (detalle.nroFactura == factura.nroFactura)
                 {
                     printf("%-10d | %-50s | $%16.2f | %10d | $%11.2f\n",
-                           detalles[j].codigoArticulo, detalles[j].descripcion,
-                           detalles[j].precioUnitario, detalles[j].cantidad, detalles[j].subtotalLinea);
+                           detalle.codigoArticulo, detalle.descripcion,
+                           detalle.precioUnitario, detalle.cantidad, detalle.subtotalLinea);
                 }
             }
-            printf("Total de la factura: $%.2f\n", factura.totalFactura);
+            if (ferror(archivoDetalles))
+            {
+                printf("Error al leer el archivo de detalles de facturas.\n");
+                return;
+            }
         }
+
+        printf("Total de la factura: $%.2f\n", factura.totalFactura);
+    }
+
+    if (ferror(archivoFacturas))
+    {
+        printf("Error al leer el archivo de facturas.\n");
+    }
+    else if (cantidadFacturas == 0)
+    {
+        printf("No hay facturas para mostrar.\n");
     }
 }
 

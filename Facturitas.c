@@ -1,18 +1,16 @@
+#include <stdio.h>
 #include "utiles_Proyecto.h"
 #include "FactuFunciones.h" // esta tiene incluido "Estructuras.h" y define CANCELAR
 
 int main()
 {
     utf8();
-
-    Usuario usuarios[MAX_USUARIOS];
-    int cantidadUsuarios = 0; // el admin es fijo (CLAVE_ADMIN), no se guarda en el arreglo
     int permi;
-    //FILE *archivoLogs;
-    //FILE *archivoProductos;
-    //FILE *archivoClientes;
-    //FILE *archivoFacturas;
-    FILE *archivoUsers = NULL;
+    FILE *archivoUsuarios;
+    if ((archivoUsuarios = fopen("bd_Users.dat", "rb+")) == NULL)
+    {
+        archivoUsuarios = fopen("bd_Users.dat", "wb+");
+    }
 
     // Ciclo general
     do
@@ -30,18 +28,18 @@ int main()
         switch (permi) // Según el nivel de permiso es el menú al que va
         {
         case PERMI_ADMIN:
-            if (LogeoAdmin(usuarios, &cantidadUsuarios, archivoUsers) == CANCELAR)
+            if (LogeoAdmin() == CANCELAR)
             {
                 permi = CANCELAR; // se agotaron los intentos: cierra el programa
             }
             break;
 
         case PERMI_GESTOR:
-            if (LogeoGestor(usuarios, cantidadUsuarios))
+            if (LogeoGestor(archivoUsuarios))
             {
                 limpiarPantalla();
                 printf("----Bienvenide a Balancin----\n");
-                MenuUsuario(); // Llamada al menú de usuario con productos y detalles vacíos 
+                MenuUsuario(); // Llamada al menú de usuario con productos y detalles vacíos
                 //(Hay que agregar los archivos de los productos y facturas para que funcionen las stas)
             }
             break;
@@ -50,12 +48,15 @@ int main()
             break;
 
         default:
-            printf("ERROR DE CUENTA\n");
+            printf("Error: Permiso inválido. Saliendo del programa...\n");
+            retardo2(0.2);
+            permi = CANCELAR; // cierra el programa
             break;
         }
     } while (permi != CANCELAR);
 
     printf("\n¡Hasta luego!\n");
 
+    fclose(archivoUsuarios);
     return 0;
 }
