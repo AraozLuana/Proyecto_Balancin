@@ -12,14 +12,7 @@
 #define PERMI_GESTOR 2
 #define PERMI_ADMIN 1
 
- 
-/* ============================================================
-*  ROLES DE USUARIO
-* ============================================================ */
-typedef enum {
-    ROL_ADMIN  = 1,
-    ROL_GESTOR = 2
-} RolUsuario;
+
  
 /* ============================================================
 *  USUARIO
@@ -27,9 +20,8 @@ typedef enum {
 typedef struct {
     char       nombreUsuario[LARGO_USUARIO];  /* PK lógica, única */
     char       claveHash[LARGO_CLAVE];        /* hash, NUNCA texto plano */
-    RolUsuario rol;
     int        activo;                        /* 1 = activo, 0 = baja */
-    int permi;
+    int rol_usuario;                           /*1 = ADMIN, 2 = GESTOR*/ 
 } Usuario;
  
 /* ============================================================
