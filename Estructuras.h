@@ -12,15 +12,9 @@
 #define LARGO_LOCALIDAD  40
 #define PERMI_GESTOR 2
 #define PERMI_ADMIN 1
+#define LARGO_CODIGO 4
+#define LARGO_RESPUESTA 10
 
- 
-/* ============================================================
-*  ROLES DE USUARIO
-* ============================================================ */
-typedef enum {
-    ROL_ADMIN  = 1,
-    ROL_GESTOR = 2
-} RolUsuario;
  
 /* ============================================================
 *  USUARIO
@@ -28,8 +22,8 @@ typedef enum {
 typedef struct {
     char       nombreUsuario[LARGO_USUARIO];  /* PK lógica, única */
     char       claveHash[LARGO_CLAVE];        /* hash, NUNCA texto plano */
-    int rol;
-    int activo;                        /* 1 = activo, 0 = baja */
+    int        activo;                        /* 1 = activo, 0 = baja */
+    int rol_usuario;                           /*1 = ADMIN, 2 = GESTOR*/ 
 } Usuario;
  
 /* ============================================================
@@ -40,7 +34,7 @@ typedef struct {
     int   numeroDNI;
     char  localidad[LARGO_LOCALIDAD];
 } Persona;
- 
+
 /* ============================================================
 *  CLIENTE
 * ============================================================ */
@@ -59,7 +53,8 @@ typedef struct {
     char  descripcion[LARGO_DESC];
     float precio;             /* NETO, sin IVA */
     int   stock;
-    int   activo;             /* 1 = activo, 0 = dado de baja */
+    int   estado;             /* 1 = activo, 0 = dado de baja */
+    int cantVendida;             
 } Articulo;
  
 /* ============================================================
