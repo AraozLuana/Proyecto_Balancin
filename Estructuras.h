@@ -11,7 +11,7 @@
 #define LARGO_DESC      80
 #define PERMI_GESTOR 2
 #define PERMI_ADMIN 1
-
+#define LARGO_CODIGO 4
 
  
 /* ============================================================
@@ -31,7 +31,7 @@ typedef struct {
     char  nombreYApellido[LARGO_NOMBRE];
     int   numeroDNI;
 } Persona;
- 
+
 /* ============================================================
 *  CLIENTE
 * ============================================================ */
@@ -49,7 +49,8 @@ typedef struct {
     char  descripcion[LARGO_DESC];
     float precio;             /* NETO, sin IVA */
     int   stock;
-    int   activo;             /* 1 = activo, 0 = dado de baja */
+    int   estado;
+    int cantVendida;             /* 1 = activo, 0 = dado de baja */
 } Articulo;
  
 /* ============================================================

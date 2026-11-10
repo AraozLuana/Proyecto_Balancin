@@ -52,7 +52,7 @@
 // PROTOTIPOS
 // *********************************************************************************
 int buscarPosicionRegistro(FILE *archivoUsuario, char *nombre_usuario_baja);
-int validarLogin(FILE *archivoUsuarios, char *nombreUsuario,char *clave);
+int validarLogin(FILE *archivoUsuarios, char *nombreUsuario, char *clave);
 int registrarUsuario(FILE *archivoUsers);
 int iniciarSesion();
 int LogeoAdmin();
@@ -64,6 +64,7 @@ void pantallaCarga();
 void prepararConsola(void);
 void mostrarMenuAdmin(const char *titulo, const char *opciones[], int cant, int sel);
 int elegirOpcion(const char *titulo, const char *opciones[], int cant);
+void verListadoDeProductos(FILE *archivoProductos);
 
 // *********************************************************************************
 // Recorre el arreglo USUARIOS buscando un nombre que coincida con el
@@ -159,7 +160,7 @@ int elegirOpcion(const char *titulo, const char *opciones[], int cant)
 // Devuelve el permi de la cuenta (PERMI_ADMIN o PERMI_GESTOR) si el login fue
 // exitoso, USUARIO_NO_ENCONTRADO (-1) o CONTRA_INCORRECTA (0) en caso contrario.
 // *********************************************************************************
-int validarLogin(FILE *archivoUsuarios, char *nombreUsuario,char *clave)
+int validarLogin(FILE *archivoUsuarios, char *nombreUsuario, char *clave)
 {
     int posicion = buscarPosicionRegistro(archivoUsuarios, nombreUsuario);
     Usuario user;
@@ -167,13 +168,13 @@ int validarLogin(FILE *archivoUsuarios, char *nombreUsuario,char *clave)
     {
         return USUARIO_NO_ENCONTRADO;
     }
-    fseek(archivoUsuarios, posicion* sizeof(Usuario), SEEK_SET);
+    fseek(archivoUsuarios, posicion * sizeof(Usuario), SEEK_SET);
     fread(&user, sizeof(Usuario), 1, archivoUsuarios);
     if ((strcmp(user.nombreUsuario, nombreUsuario) == 0) && strcmp(user.claveHash, clave) == 0)
     {
         return user.rol_usuario;
     }
-    
+
     return CONTRA_INCORRECTA;
 }
 
@@ -252,7 +253,22 @@ int iniciarSesion()
     }
     return CANCELAR;
 }
-
+void verListadoDeProductos(FILE *archivoProductos)
+{
+    Articulo product;
+    if (fread(&product, sizeof(Articulo), 1, archivoProductos) == 0)
+    {
+        printf("No hay productos cargados para mostrar\n");
+    }
+    printf("==============================================================\n");
+    printf("                    CONSULTA DE PRODUCTOS                     \n");
+    printf("==============================================================\n");
+    printf("%-6s %-22s %-10s %8s %10s\n", "COD", "NOMBRE", "STOCK", "PRECIO", "CANTIDAD VENDIDA" , "ESTADO");
+    while (fread(&product, sizeof(Articulo), 1, archivoProductos) == 1) // significa que mientras que haya registro
+    {
+        printf("%-6d %-22s %-10s %8d %10.2f %d %d\n", product.codigo, product.descripcion, product.stock, product.precio,product.cantVendida, product.estado);
+    }
+}
 // *********************************************************************************
 // MENÚ GESTOR
 // *********************************************************************************
@@ -285,6 +301,7 @@ void MenuUsuario()
             printf("\n");
 
             op = elegirOpcion("SECCION FACTURAS", vecMenuFacturas, cantOpcionesFacturas);
+
             do
             {
                 switch (op)
@@ -320,7 +337,7 @@ void MenuUsuario()
             break;
 
         case op2:
-    
+
             op = elegirOpcion("SECCION ESTADISTICAS", vecMenuEstadisticas, cantOpcionesEstadisticas);
             do
             {
@@ -345,24 +362,24 @@ void MenuUsuario()
             break;
         case op3:
             op = elegirOpcion("SECCION PRODUCTOS", vecMenuProductos, cantOpcionesProductos);
+            FILE *archivoProductos; // creacion y apertura del archivo de productos. Si existe lo abre, si no existe lo crea
+
+            if ((archivoProductos = fopen("bd_Products.dat", "rb+")) == NULL)
+            {
+                archivoProductos = fopen("bd_Products.dat", "wb+");
+            }
             do
             {
                 switch (op)
                 {
                 case op1:
-                    printf("Desarrollar ver listado de productos\n");
+                    verListadoDeProductos(archivoProductos);
                     break;
                 case op2:
                     printf("Desarrollar agregar producto nuevo\n");
                     break;
                 case op3:
-                    printf("Desarrollar ver listado de materia prima\n");
-                    break;
-                case op4:
-                    printf("Desarrollar agregar materia prima\n");
-                    break;
-                case op5:
-                    printf("Desarrollar eliminar materia prima\n");
+                    printf("Dar de baja producto \n");
                     break;
                 default:
                     printf("Error: Fuera de rango. Reintente.\n");
@@ -372,6 +389,7 @@ void MenuUsuario()
                     pausa();
 
             } while (op != cantOpcionesProductos);
+            fclose(archivoProductos);
             break;
         }
         if (op != cantOpcionesMenuPrincipal)
@@ -453,7 +471,7 @@ void BajaGestor(FILE *archivoUsuarios)
     {
         fseek(archivoUsuarios, posicionRegistro * sizeof(Usuario), SEEK_SET);
         fread(&user, sizeof(Usuario), 1, archivoUsuarios);
-        user.activo = INACTIVO; //se trabaja una BAJA LOGICA, no estamos borrando por completo el registro ya que no hay manera de deshacerlo. la buena practica es desactivar registros, no eliminarlos por completo
+        user.activo = INACTIVO; // se trabaja una BAJA LOGICA, no estamos borrando por completo el registro ya que no hay manera de deshacerlo. la buena practica es desactivar registros, no eliminarlos por completo
         printf("Gestor desactivado correctamente\n");
     }
 }
@@ -492,7 +510,7 @@ void MenuAdmin()
         case op2:
             limpiarPantalla();
             BajaGestor(archivoUsuarios);
-           
+
             break;
         }
         if (op != cant)
@@ -542,15 +560,15 @@ int LogeoAdmin()
     retardo2(0.2);
     return CANCELAR;
 }
-int contarRegistros(FILE *archivoUsers){
+int contarRegistros(FILE *archivoUsers)
+{
     int cantidad = 0;
     Usuario user;
-    while (fread(&user, sizeof(Usuario),1, archivoUsers))
+    while (fread(&user, sizeof(Usuario), 1, archivoUsers))
     {
         cantidad++;
     }
     return cantidad;
-    
 }
 // *********************************************************************************
 // LOGUEO GESTOR
