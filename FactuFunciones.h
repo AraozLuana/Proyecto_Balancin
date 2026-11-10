@@ -420,6 +420,7 @@ void MenuUsuario()
     int cantOpcionesProductos = sizeof(vecMenuProductos) / sizeof(vecMenuProductos[0]);
     // Creacion de los archivos
     FILE *archivoProductos;
+    FILE *archivoEstadisticas;
     prepararConsola();
 
     do
@@ -469,9 +470,14 @@ void MenuUsuario()
             break;
 
         case op2:
+            if ((archivoProductos = fopen("bd_Products.dat", "rb+")) == NULL)
+            {
+                archivoProductos = fopen("bd_Products.dat", "wb+");
+            }
 
             do
             {
+                rewind(archivoProductos);
                 op = elegirOpcion("SECCION ESTADISTICAS", vecMenuEstadisticas, cantOpcionesEstadisticas);
                 switch (op)
                 {
@@ -488,6 +494,8 @@ void MenuUsuario()
                     printf("Desarrollar ver ventas por zona");
                     break;
                 }
+                fclose(archivoProductos);
+                break;
                 if (op != cantOpcionesEstadisticas)
                     pausa();
             } while (op != cantOpcionesEstadisticas);
