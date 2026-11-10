@@ -270,7 +270,7 @@ int registrarUsuario(FILE *archivoUsers)
 int iniciarSesion()
 {
     int op = 0;
-    char *menu[] = {"Administrador", "Gestor", "Salir"};
+    const char *menu[] = {"Administrador", "Gestor", "Salir"};
     int cant = sizeof(menu) / sizeof(menu[0]);
 
     do
@@ -352,7 +352,7 @@ int registrarProducto(FILE *archivoProducts)
     leerFlotante("Ingrese el precio unitario de este producto (-1) para salir: ", &product.precio);
     while (product.codigo < SALIDA && product.precio == 0)
     {
-        leerEntero("El precio no puede ser ni 0 ni  negativo.Ingrese el precio unitario de este producto (-1 para salir)", &product.precio);
+        leerFlotante("El precio no puede ser ni 0 ni  negativo.Ingrese el precio unitario de este producto (-1 para salir)", &product.precio);
     }
 
     if (product.precio == SALIDA)
@@ -362,7 +362,7 @@ int registrarProducto(FILE *archivoProducts)
     leerEntero("Ingrese la cantidad vendida de este producto (-1) para salir: ", &product.cantVendida);
     while (product.cantVendida < SALIDA)
     {
-        leerEntero("La cantidad vendida no puede negativa. Ingrese la cantidad vendida de este producto (-1) para salir:(-1 para salir)", &product.precio);
+        leerEntero("La cantidad vendida no puede negativa. Ingrese la cantidad vendida de este producto (-1) para salir:(-1 para salir)", &product.cantVendida);
     }
 
     if (product.cantVendida == SALIDA)
@@ -408,10 +408,10 @@ int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBa
 void MenuUsuario()
 {
     int op = 0;
-    char *VecMenuPrincipal[] = {"Facturas", "Estadisticas", "Productos", "Salir"};
-    char *vecMenuFacturas[] = {"Generar nueva factura", "Ver listado de facturas", "Eliminar factura de la base de datos", "Ver listado de clientes", "Agregar cliente", "Eliminar cliente", "Modificar cliente", "Volver"};
-    char *vecMenuEstadisticas[] = {"Ver producto estrella", "Ver producto mas vendido", "Ver mejores clientes", "Ver ventas por zona", "Volver"};
-    char *vecMenuProductos[] = {"Ver listado de productos", "Agregar producto nuevo", "Dar de baja un producto", "Volver"};
+    const char *VecMenuPrincipal[] = {"Facturas", "Estadisticas", "Productos", "Salir"};
+    const char *vecMenuFacturas[] = {"Generar nueva factura", "Ver listado de facturas", "Eliminar factura de la base de datos", "Ver listado de clientes", "Agregar cliente", "Eliminar cliente", "Modificar cliente", "Volver"};
+    const char *vecMenuEstadisticas[] = {"Ver producto estrella", "Ver producto mas vendido", "Ver mejores clientes", "Ver ventas por zona", "Volver"};
+    const char *vecMenuProductos[] = {"Ver listado de productos", "Agregar producto nuevo", "Dar de baja un producto", "Volver"};
 
     utf8();
     limpiarPantalla();
