@@ -695,7 +695,7 @@ void buscarCodigo(char *nombreBuscado)
 {
     FILE *archivoClientes = fopen("clientes.dat", "rb");
     int impreso = 0;
-    if (archivoClientes = !NULL)
+    if (archivoClientes != NULL)
     {
         Cliente cliente;
 
@@ -712,7 +712,6 @@ void buscarCodigo(char *nombreBuscado)
         {
             printf("No se encontraron clientes con el nombre: %s\n", nombreBuscado);
         }
-        fclose(archivoClientes);
         printf("Error al buscar el código del cliente.\n");
     }
     else
