@@ -14,6 +14,7 @@
 #define ALICUOTA_IVA_ALIMENTOS_BASICOS 0.105
 #define ALICUOTA_IVA_PROCESADOS 0.21
 #define LARGO_CODIGO 4
+#define LARGO_RESPUESTA 10
 
  
 /* ============================================================
@@ -51,8 +52,8 @@ typedef struct {
     char  descripcion[LARGO_DESC];
     float precio;             /* NETO, sin IVA */
     int   stock;
-    int   estado;
-    int cantVendida;             /* 1 = activo, 0 = dado de baja */
+    int   estado;             /* 1 = activo, 0 = dado de baja */
+    int cantVendida;             
 } Articulo;
  
 /* ============================================================
