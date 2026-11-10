@@ -5,6 +5,7 @@
 #include <time.h>
 #include <string.h>
 #include <stdbool.h>
+#include <ctype.h>
 
 #include "Estructuras.h"
 #include "utiles_Proyecto.h"
@@ -41,17 +42,17 @@
 
 // Resultados de validarLogin
 #define CONTRA_INCORRECTA 0
-#define USUARIO_NO_ENCONTRADO -1
+#define NO_ENCONTRADO -1
 
-// Resultados de registrarUsuario
+// Resultados de ambas funciones de registrar
 #define EXITO 1
-#define USUARIO_EXISTE 2
+#define EXISTE_BD 2
 #define SALIDA -1
 
 // *********************************************************************************
 // PROTOTIPOS
 // *********************************************************************************
-int buscarPosicionRegistro(FILE *archivoUsuario, char *nombre_usuario_baja);
+int buscarPosicionRegistroUsuario(FILE *archivoUsuario, char *nombre_usuario_baja);
 int validarLogin(FILE *archivoUsuarios, char *nombreUsuario, char *clave);
 int registrarUsuario(FILE *archivoUsers);
 int iniciarSesion();
@@ -62,13 +63,18 @@ void MenuAdmin();
 void AltaGestor(FILE *archivoUsuarios);
 void pantallaCarga();
 void prepararConsola(void);
-void mostrarMenuAdmin(const char *titulo, const char *opciones[], int cant, int sel);
 int elegirOpcion(const char *titulo, const char *opciones[], int cant);
 void verListadoDeProductos(FILE *archivoProductos);
+void mostrarMenu(const char *titulo, const char *opciones[], int cant, int sel);
+int registrarProducto(FILE *archivoProducts);
+int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBaja);
+void BajaGestor(FILE *archivoUsuarios);
+int contarRegistrosUsuarios(FILE *archivoUsers);
+void mostrar_pose1();
+void mostrar_pose2();
 
 // *********************************************************************************
-// Recorre el arreglo USUARIOS buscando un nombre que coincida con el
-// que le pasás, y devuelve la posición donde lo encontró (o -1)
+// Funciones para el menu con cursores
 // *********************************************************************************
 void prepararConsola(void)
 {
@@ -79,26 +85,6 @@ void prepararConsola(void)
     GetConsoleMode(hSalida, &modo);
     SetConsoleMode(hSalida, modo | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 }
-
-int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[])
-{
-    int i = 0;
-    int posicionEncontrada = (-1);
-
-    while (i < cantidadUsuarios && posicionEncontrada == (-1))
-    {
-        if (strcmp(usuarios[i].nombreUsuario, nombreBuscado) == 0)
-        {
-            posicionEncontrada = i;
-        }
-        i++;
-    }
-
-    return posicionEncontrada;
-}
-// *********************************************************************************
-// Funciones para el menu con cursores
-// *********************************************************************************
 void mostrarMenu(const char *titulo, const char *opciones[], int cant, int sel)
 {
     int i;
@@ -160,16 +146,41 @@ int elegirOpcion(const char *titulo, const char *opciones[], int cant)
 // Devuelve el permi de la cuenta (PERMI_ADMIN o PERMI_GESTOR) si el login fue
 // exitoso, USUARIO_NO_ENCONTRADO (-1) o CONTRA_INCORRECTA (0) en caso contrario.
 // *********************************************************************************
+int buscarPosicionRegistroUsuario(FILE *archivoUsuario, char *nombre_usuario_baja)
+{
+    Usuario user;
+    int posicion = 0;
+    if (strcmp(nombre_usuario_baja, "-1") == 0)
+    {
+        return SALIDA;
+    }
+    rewind(archivoUsuario);
+    while (fread(&user, sizeof(Usuario), 1, archivoUsuario)) // fread retorna 1 si esta bien, mientras que exista. cuando no haya mas que sea endoffile, termina (porque sería 0)
+    {
+
+        if (strcmp(user.nombreUsuario, nombre_usuario_baja) == 0)
+        {
+            return posicion;
+        }
+
+        posicion++;
+    }
+    return NO_ENCONTRADO;
+}
 int validarLogin(FILE *archivoUsuarios, char *nombreUsuario, char *clave)
 {
-    int posicion = buscarPosicionRegistro(archivoUsuarios, nombreUsuario);
+    int posicion = buscarPosicionRegistroUsuario(archivoUsuarios, nombreUsuario);
     Usuario user;
-    if (posicion == USUARIO_NO_ENCONTRADO)
+    if (posicion < 0)
     {
-        return USUARIO_NO_ENCONTRADO;
+        return NO_ENCONTRADO;
     }
     fseek(archivoUsuarios, posicion * sizeof(Usuario), SEEK_SET);
     fread(&user, sizeof(Usuario), 1, archivoUsuarios);
+    if (user.activo == INACTIVO)
+    {
+        return NO_ENCONTRADO;
+    }
     if ((strcmp(user.nombreUsuario, nombreUsuario) == 0) && strcmp(user.claveHash, clave) == 0)
     {
         return user.rol_usuario;
@@ -186,6 +197,10 @@ int registrarUsuario(FILE *archivoUsers)
 {
     Usuario user;
     Usuario busqueda;
+    char respuesta[LARGO_RESPUESTA];
+    int posicion = 0;
+    int i;
+
     user.activo = ACTIVO;
     user.rol_usuario = PERMI_GESTOR;
 
@@ -206,21 +221,45 @@ int registrarUsuario(FILE *archivoUsers)
         printf("La contraseña no puede estar vacía.\n");
         leerCadena(user.claveHash, LARGO_CLAVE, "Contraseña (-1 para salir): ");
     }
-
     if (strcmp(user.claveHash, "-1") == 0)
     {
         return SALIDA;
     }
-    while (fread(&busqueda, sizeof(Usuario), 1, archivoUsers)) // fread retorna 1 si esta bien, mientras que exista. cuando no haya mas que sea endoffile, termina (porque sería 0)
+
+    rewind(archivoUsers);
+    while (fread(&busqueda, sizeof(Usuario), 1, archivoUsers) == 1)
     {
         if (strcmp(busqueda.nombreUsuario, user.nombreUsuario) == 0)
         {
-            return USUARIO_EXISTE;
+            if (busqueda.activo == ACTIVO)
+            {
+                return EXISTE_BD;
+            }
+
+            leerCadena(respuesta, LARGO_RESPUESTA, "Este usuario esta desactivado. Desea activarlo [SI/NO]? ");
+            for (i = 0; respuesta[i] != '\0'; i++)
+            {
+                respuesta[i] = toupper((unsigned char)respuesta[i]);
+            }
+            printf("DEBUG respuesta = [%s] largo = %d\n", respuesta, (int)strlen(respuesta));
+            if (strcmp(respuesta, "SI") == 0 || strcmp(respuesta, "S") == 0)
+            {
+                strcpy(busqueda.claveHash, user.claveHash);
+                busqueda.activo = ACTIVO;
+
+                fseek(archivoUsers, (long)posicion * sizeof(Usuario), SEEK_SET);
+                fwrite(&busqueda, sizeof(Usuario), 1, archivoUsers);
+                fflush(archivoUsers);
+                return EXITO;
+            }
+            return SALIDA;
         }
+        posicion++;
     }
 
+    fseek(archivoUsers, 0L, SEEK_END);
     fwrite(&user, sizeof(Usuario), 1, archivoUsers);
-
+    fflush(archivoUsers);
     return EXITO;
 }
 
@@ -253,6 +292,7 @@ int iniciarSesion()
     }
     return CANCELAR;
 }
+// FUNCIONES DEL MENU DE PRODUCTOS
 void verListadoDeProductos(FILE *archivoProductos)
 {
     Articulo product;
@@ -263,12 +303,103 @@ void verListadoDeProductos(FILE *archivoProductos)
     printf("==============================================================\n");
     printf("                    CONSULTA DE PRODUCTOS                     \n");
     printf("==============================================================\n");
-    printf("%-6s %-22s %-10s %8s %10s\n", "COD", "NOMBRE", "STOCK", "PRECIO", "CANTIDAD VENDIDA" , "ESTADO");
+    printf("%-6s %-22s %-10s %10s %-17s %-8s\n",
+           "COD", "NOMBRE", "STOCK", "PRECIO", "CANTIDAD VENDIDA", "ESTADO");
     while (fread(&product, sizeof(Articulo), 1, archivoProductos) == 1) // significa que mientras que haya registro
     {
-        printf("%-6d %-22s %-10s %8d %10.2f %d %d\n", product.codigo, product.descripcion, product.stock, product.precio,product.cantVendida, product.estado);
+        printf("%-6d %-22s %-10d %10.2f %-17d %-8s\n",
+               product.codigo, product.descripcion, product.stock,
+               product.precio, product.cantVendida,
+               product.estado == ACTIVO ? "ACTIVO" : "INACTIVO");
     }
 }
+int registrarProducto(FILE *archivoProducts)
+{
+    Articulo product;
+    Articulo busqueda;
+    product.estado = ACTIVO;
+
+    leerEntero("Ingrese el codigo del producto que desea agregar (-1 para salir)", &product.codigo);
+    while (product.codigo == 0 && product.codigo < SALIDA)
+    {
+        leerEntero("El codigo no puede ser ni 0 ni negativo.Ingrese el codigo del producto que desea agregar (-1 para salir)", &product.codigo);
+    }
+    if (product.codigo == SALIDA)
+    {
+        return SALIDA;
+    }
+
+    leerCadena(product.descripcion, LARGO_USUARIO, "Descripcion del producto (-1 para salir): ");
+    while (product.descripcion[0] == '\0')
+    {
+        printf("La descripcion  no puede estar vacía.\n");
+        leerCadena(product.descripcion, LARGO_USUARIO, "Descripcion del producto (-1 para salir): ");
+    }
+    if (strcmp(product.descripcion, "-1") == 0)
+    {
+        return SALIDA;
+    }
+    leerEntero("Ingrese la cantidad de stock disponible de este producto (-1) para salir: ", &product.stock);
+    while (product.codigo < SALIDA)
+    {
+        leerEntero("El stock no pued eser  negativo.Ingrese la cantidad de stock disponible de este producto(-1 para salir)", &product.stock);
+    }
+    if (product.stock == SALIDA)
+    {
+        return SALIDA;
+    }
+    leerFlotante("Ingrese el precio unitario de este producto (-1) para salir: ", &product.precio);
+    while (product.codigo < SALIDA && product.precio == 0)
+    {
+        leerEntero("El precio no puede ser ni 0 ni  negativo.Ingrese el precio unitario de este producto (-1 para salir)", &product.precio);
+    }
+
+    if (product.precio == SALIDA)
+    {
+        return SALIDA;
+    }
+    leerEntero("Ingrese la cantidad vendida de este producto (-1) para salir: ", &product.cantVendida);
+    while (product.cantVendida < SALIDA)
+    {
+        leerEntero("La cantidad vendida no puede negativa. Ingrese la cantidad vendida de este producto (-1) para salir:(-1 para salir)", &product.precio);
+    }
+
+    if (product.cantVendida == SALIDA)
+    {
+        return SALIDA;
+    }
+
+    while (fread(&busqueda, sizeof(Articulo), 1, archivoProducts)) // fread retorna 1 si esta bien, mientras que exista. cuando no haya mas que sea endoffile, termina (porque sería 0)
+    {
+        if (busqueda.codigo == product.codigo)
+        {
+            return EXISTE_BD;
+        }
+    }
+    int write = fwrite(&product, sizeof(Articulo), 1, archivoProducts);
+    printf("%d", write);
+
+    return EXITO;
+}
+int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBaja)
+{
+    Articulo product;
+    int posicion = 0;
+    while (fread(&product, sizeof(Articulo), 1, archivoProductos)) // fread retorna 1 si esta bien, mientras que exista. cuando no haya mas que sea endoffile, termina (porque sería 0)
+    {
+
+        if (product.codigo == codigoProductoBaja)
+        {
+            return posicion;
+        }
+        posicion++;
+    }
+    if (product.codigo != codigoProductoBaja)
+    {
+        return NO_ENCONTRADO;
+    }
+}
+
 // *********************************************************************************
 // MENÚ GESTOR
 // *********************************************************************************
@@ -279,7 +410,7 @@ void MenuUsuario()
     char *VecMenuPrincipal[] = {"Facturas", "Estadisticas", "Productos", "Salir"};
     char *vecMenuFacturas[] = {"Generar nueva factura", "Ver listado de facturas", "Eliminar factura de la base de datos", "Ver listado de clientes", "Agregar cliente", "Eliminar cliente", "Modificar cliente", "Volver"};
     char *vecMenuEstadisticas[] = {"Ver producto estrella", "Ver producto mas vendido", "Ver mejores clientes", "Ver ventas por zona", "Volver"};
-    char *vecMenuProductos[] = {"Ver listado de productos", "Agregar producto nuevo", "Ver listado de materia prima", "Agregar materia prima", "Eliminar materia prima", "Volver"};
+    char *vecMenuProductos[] = {"Ver listado de productos", "Agregar producto nuevo", "Dar de baja un producto", "Volver"};
 
     utf8();
     limpiarPantalla();
@@ -287,6 +418,8 @@ void MenuUsuario()
     int cantOpcionesFacturas = sizeof(vecMenuFacturas) / sizeof(vecMenuFacturas[0]);
     int cantOpcionesEstadisticas = sizeof(vecMenuEstadisticas) / sizeof(vecMenuEstadisticas[0]);
     int cantOpcionesProductos = sizeof(vecMenuProductos) / sizeof(vecMenuProductos[0]);
+    // Creacion de los archivos
+    FILE *archivoProductos;
     prepararConsola();
 
     do
@@ -300,10 +433,9 @@ void MenuUsuario()
 
             printf("\n");
 
-            op = elegirOpcion("SECCION FACTURAS", vecMenuFacturas, cantOpcionesFacturas);
-
             do
             {
+                op = elegirOpcion("SECCION FACTURAS", vecMenuFacturas, cantOpcionesFacturas);
                 switch (op)
                 {
                 case op1:
@@ -338,9 +470,9 @@ void MenuUsuario()
 
         case op2:
 
-            op = elegirOpcion("SECCION ESTADISTICAS", vecMenuEstadisticas, cantOpcionesEstadisticas);
             do
             {
+                op = elegirOpcion("SECCION ESTADISTICAS", vecMenuEstadisticas, cantOpcionesEstadisticas);
                 switch (op)
                 {
                 case op1:
@@ -361,42 +493,92 @@ void MenuUsuario()
             } while (op != cantOpcionesEstadisticas);
             break;
         case op3:
-            op = elegirOpcion("SECCION PRODUCTOS", vecMenuProductos, cantOpcionesProductos);
-            FILE *archivoProductos; // creacion y apertura del archivo de productos. Si existe lo abre, si no existe lo crea
 
             if ((archivoProductos = fopen("bd_Products.dat", "rb+")) == NULL)
             {
                 archivoProductos = fopen("bd_Products.dat", "wb+");
             }
+
             do
             {
+                rewind(archivoProductos);
+                op = elegirOpcion("SECCION PRODUCTOS", vecMenuProductos, cantOpcionesProductos);
                 switch (op)
+
                 {
                 case op1:
+
                     verListadoDeProductos(archivoProductos);
+                    pausa();
                     break;
                 case op2:
-                    printf("Desarrollar agregar producto nuevo\n");
+                    printf("**********Registrar Producto**********\n\n");
+
+                    int resultado = registrarProducto(archivoProductos);
+
+                    if (resultado == EXISTE_BD)
+                    {
+                        printf("Producto ya existente, reintente\n");
+                    }
+                    else if (resultado == SALIDA)
+                    {
+                        printf("No se registro el Prodcuto (cancelado)");
+                    }
+                    else
+                    {
+                        printf("\n¡Registro exitoso!\n");
+                    }
+
+                    pausa();
                     break;
                 case op3:
-                    printf("Dar de baja producto \n");
+                    printf("**********Dar de baja un Producto**********\n\n");
+                    int codigo = 0;
+                    int posicionRegistro = 0;
+                    Articulo product;
+                    leerEntero("Ingrese el codigo del articulo que quiere dar de baja (-1 para salir)", &codigo);
+                    if (codigo == SALIDA)
+                    {
+                        printf("No se hizo la baja  (cancelado)\n");
+                    }
+                    posicionRegistro = buscarPosicionRegistroProductos(archivoProductos, codigo);
+                    if (posicionRegistro == NO_ENCONTRADO)
+                    {
+                        printf("No se ha encontrado el producto\n");
+                    }
+                    else
+                    {
+
+                        fseek(archivoProductos, posicionRegistro * sizeof(Articulo), SEEK_SET);
+                        fread(&product, sizeof(Articulo), 1, archivoProductos);
+                        product.estado = INACTIVO; // se trabaja una BAJA LOGICA, no estamos borrando por completo el registro ya que no hay manera de deshacerlo. la buena practica es desactivar registros, no eliminarlos por completo
+                        fseek(archivoProductos, posicionRegistro * sizeof(Articulo), SEEK_SET);
+                        fwrite(&product, sizeof(Articulo), 1, archivoProductos);
+                        fflush(archivoProductos);
+
+                        printf("Producto desactivado correctamente\n");
+                    }
                     break;
                 default:
                     printf("Error: Fuera de rango. Reintente.\n");
                     break;
                 }
+
+                fclose(archivoProductos);
+                break;
                 if (op != cantOpcionesProductos)
+                {
                     pausa();
+                }
 
             } while (op != cantOpcionesProductos);
-            fclose(archivoProductos);
-            break;
         }
         if (op != cantOpcionesMenuPrincipal)
+        {
             pausa();
+        }
     } while (op != cantOpcionesMenuPrincipal);
 }
-
 // *********************************************************************************
 // Alta Gestor
 // Usa buffers propios: antes pisaba la variable "clave" de LogeoAdmin con la
@@ -409,7 +591,7 @@ void AltaGestor(FILE *archivoUsuarios)
 
     int resultado = registrarUsuario(archivoUsuarios);
 
-    if (resultado == USUARIO_EXISTE)
+    if (resultado == EXISTE_BD)
     {
         printf("Usuario ya existente, reintente\n");
     }
@@ -424,28 +606,8 @@ void AltaGestor(FILE *archivoUsuarios)
 
     pausa();
 }
-int buscarPosicionRegistro(FILE *archivoUsuario, char *nombre_usuario_baja)
-{
-    Usuario user;
-    int posicion = 0;
-    if (strcmp(nombre_usuario_baja, "-1") == 0)
-    {
-        return SALIDA;
-    }
-    while (fread(&user, sizeof(Usuario), 1, archivoUsuario)) // fread retorna 1 si esta bien, mientras que exista. cuando no haya mas que sea endoffile, termina (porque sería 0)
-    {
 
-        if (strcmp(user.nombreUsuario, nombre_usuario_baja) == 0)
-        {
-            return posicion;
-        }
-        else
-        {
-            return USUARIO_NO_ENCONTRADO;
-        }
-        posicion++;
-    }
-}
+// BAJA GESTOR: baja logica.
 void BajaGestor(FILE *archivoUsuarios)
 {
     printf("**********Dar de baja un Gestor**********\n\n");
@@ -462,16 +624,22 @@ void BajaGestor(FILE *archivoUsuarios)
     {
         printf("No se registró el usuario (cancelado)\n");
     }
-    posicionRegistro = buscarPosicionRegistro(archivoUsuarios, nombre);
-    if (posicionRegistro == USUARIO_NO_ENCONTRADO)
+    posicionRegistro = buscarPosicionRegistroUsuario(archivoUsuarios, nombre);
+    if (posicionRegistro == NO_ENCONTRADO)
     {
         printf("No se ha encontrado el usuario\n");
     }
     else
     {
-        fseek(archivoUsuarios, posicionRegistro * sizeof(Usuario), SEEK_SET);
+        fseek(archivoUsuarios, (long)posicionRegistro * sizeof(Usuario), SEEK_SET);
         fread(&user, sizeof(Usuario), 1, archivoUsuarios);
-        user.activo = INACTIVO; // se trabaja una BAJA LOGICA, no estamos borrando por completo el registro ya que no hay manera de deshacerlo. la buena practica es desactivar registros, no eliminarlos por completo
+
+        user.activo = INACTIVO; // baja lógica
+
+        fseek(archivoUsuarios, (long)posicionRegistro * sizeof(Usuario), SEEK_SET); // volver al inicio del registro
+        fwrite(&user, sizeof(Usuario), 1, archivoUsuarios);
+        fflush(archivoUsuarios);
+
         printf("Gestor desactivado correctamente\n");
     }
 }
@@ -481,19 +649,17 @@ void BajaGestor(FILE *archivoUsuarios)
 void MenuAdmin()
 {
     FILE *archivoUsuarios;
-    if ((archivoUsuarios = fopen("bd_Users.dat", "rb+")) == NULL)
+    if ((archivoUsuarios = fopen("bd_Users.dat", "rb+")) == NULL) // creacion y apertura del archivo de usuarios. Si existe, lo abre y utiliza, si no existe, lo crea y utiliza
     {
         archivoUsuarios = fopen("bd_Users.dat", "wb+");
     }
 
     int op = 0;
-    // char vecMenuAdministrador[4][50]= {"1. Dar de alta a un gestor\n", "2. Dar de baja a un gestor\n", "0.Salir"};
     const char *menu[] = {"Dar de alta a un gestor\n",
                           "Dar de baja a un gestor\n",
                           "Salir"};
     int cant = sizeof(menu) / sizeof(menu[0]);
     prepararConsola();
-    // abrir archivo de usuarios
 
     do
     {
@@ -560,7 +726,7 @@ int LogeoAdmin()
     retardo2(0.2);
     return CANCELAR;
 }
-int contarRegistros(FILE *archivoUsers)
+int contarRegistrosUsuarios(FILE *archivoUsers)
 {
     int cantidad = 0;
     Usuario user;
@@ -581,7 +747,7 @@ bool LogeoGestor(FILE *archivoUsuarios)
     char clave[LARGO_CLAVE];
     int intentos = MAXIMO_INTENTOS;
     int cantidadUsuarios = 0;
-    cantidadUsuarios = contarRegistros(archivoUsuarios);
+    cantidadUsuarios = contarRegistrosUsuarios(archivoUsuarios);
 
     if (cantidadUsuarios == 0)
     {
@@ -658,9 +824,4 @@ void pantallaCarga()
         retardo2(0.2);
     }
 }
-
-void registrarFactura()
-{
-}
-
 #endif /* FACTUFUNCIONES_H_ */
