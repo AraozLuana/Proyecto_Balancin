@@ -1,11 +1,5 @@
 #ifndef FACTUFUNCIONES_H_
 #define FACTUFUNCIONES_H_
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
-#include <string.h>
-#include <stdbool.h>
-#include <math.h>
 
 #include "Estructuras.h"
 #include "utiles_Proyecto.h"
@@ -54,19 +48,26 @@ const char *pathArchivoUsers = "usersData.dat";
 // *********************************************************************************
 // PROTOTIPOS
 // *********************************************************************************
+// USUARIOS
 int buscarUsuario(Usuario usuarios[], int cantidadUsuarios, char nombreBuscado[]);
 int validarLogin(Usuario usuarios[], int cantidadUsuarios, char nombreIngresado[], char claveIngresada[]);
 int registrarUsuario(Usuario usuarios[], int *cantidadUsuarios, char nombreNuevo[], char claveNueva[], int permiNuevo, FILE *archivoUsers);
 int iniciarSesion();
 int LogeoAdmin(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios);
 bool LogeoGestor(Usuario usuarios[], int cantidadUsuarios);
+//**********************************************************************************
+// MENUS
 void MenuUsuario();
 void MenuAdmin(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios);
+//**********************************************************************************
+// FUNCIONES VARIAS
 void AltaGestor(Usuario usuarios[], int *cantidadUsuarios, FILE *archivoUsuarios);
 void pantallaCarga();
 void mostrarMenu(char VecMenu[][50]);
 int seleccionaItem(char VecMenu[][50]);
-bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[], int capacidadDetalles, int *cantidadDetalles);
+bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[], int capacidadDetalles, int *cantidadDetalles, 
+                    int *cantidadFacturas, FILE *archivoFacturas, FILE *archivoProductos); // tdv no hay archivo de facturas y prods. Por ahora se cargan manualmente
+void verListadoFacturas(Factura facturas[], int cantidadFacturas, DetalleFactura detalles[], int cantidadDetalles);
 
 // *********************************************************************************
 // Recorre el arreglo USUARIOS buscando un nombre que coincida con el
@@ -300,9 +301,10 @@ void MenuUsuario()
 {
     int op = 0;
     int siguienteNroFactura = 1;
-    Factura facturaActual;
+    Factura facturaActual = {0};
     DetalleFactura detallesFactura[MAX_DETALLES_FACTURA];
     int cantidadDetallesFactura = 0;
+    int cantidadFacturas = 0;
     char VecMenuPrincipal[4][50] = {"1. Facturas", "2. Estadisticas", "3. Productos", "0. Salir"};
     // char vecMenuFacturas[4][50];
     // char vecMenuEstadisticas[4][50];
@@ -334,22 +336,22 @@ void MenuUsuario()
             switch (op)
             {
             case op1:
-            limpiarPantalla();
-                if (generarFactura(siguienteNroFactura, &facturaActual, detallesFactura, MAX_DETALLES_FACTURA, &cantidadDetallesFactura))
+                limpiarPantalla();
+                if (generarFactura(siguienteNroFactura, &facturaActual, detallesFactura,
+                                   MAX_DETALLES_FACTURA, &cantidadDetallesFactura,
+                                   &cantidadFacturas, NULL, NULL))
                 {
                     siguienteNroFactura++;
                 }
-                pausa();
                 break;
             case op2:
                 limpiarPantalla();
-                printf("CREAR FUNCION VER LISTADO DE FACTURAS");
-                pausa();
+                verListadoFacturas(&facturaActual, cantidadFacturas,
+                                   detallesFactura, cantidadDetallesFactura);
                 break;
             case op3:
                 limpiarPantalla();
                 printf("CREAR FUNCION ELIMINAR FACTURA DE LA BD");
-                pausa();
                 break;
             case op4:
                 limpiarPantalla();
@@ -439,7 +441,7 @@ void MenuUsuario()
             leerEntero("Seleccione una opción: ", &op);
             switch (op)
             {
-            case op1: 
+            case op1:
                 limpiarPantalla();
                 printf("Desarrollar ver listado de productos\n");
                 break;
@@ -472,7 +474,9 @@ void MenuUsuario()
             printf("Error: Fuera de rango. Reintente.\n");
             break;
         }
+        limpiarPantalla();
     } while (op != SALIR);
+
 }
 
 // *********************************************************************************
@@ -781,9 +785,9 @@ void pantallaCarga()
 } */
 
 // Carga los datos del cliente y sus productos, calcula los importes y devuelve si se genero la factura.
-bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[], int capacidadDetalles, int *cantidadDetalles)
+bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[], int capacidadDetalles, int *cantidadDetalles, int *cantidadFacturas, FILE *archivoFacturas, FILE *archivoProductos)
 {
-    //Inicializo las variables
+    // Inicializo las variables
     Factura nuevaFactura = {0};
     int cantidadLineas = 0;
     float netoGravado = 0;
@@ -829,74 +833,78 @@ bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[],
             nuevaFactura.fechaEmision.mes = fechaActual->tm_mon + 1;
             nuevaFactura.fechaEmision.anio = fechaActual->tm_year + 1900;
 
-            while (cantidadLineas < capacidadDetalles)
+            int codigoIngresado = 0;
+            do
             {
                 DetalleFactura detalle = {0};
                 float precioUnitario = 0;
                 float nuevoNeto = 0;
                 bool lineaValida = true;
 
-                leerEntero("Ingrese el código del producto (0 para finalizar): ", &detalle.codigoArticulo);
+                leerEntero("Ingrese el código del producto (0 para finalizar): ", &codigoIngresado);
+                detalle.codigoArticulo = codigoIngresado;
                 printf("\n");
-                if (detalle.codigoArticulo == 0)
+                if (codigoIngresado != 0)
                 {
-                    break;
-                }
-                else
-                {
+
                     if (detalle.codigoArticulo < 0)
                     {
                         printf("El código del producto debe ser mayor que cero.\n");
                         lineaValida = false;
                     }
-                }
 
-                if (lineaValida)
-                {
-                    leerCadena(detalle.descripcion, LARGO_DESC, "Ingrese la descripción del producto: ");
-                    printf("\n");
-                    if (detalle.descripcion[0] == '\0')
+                    if (lineaValida) /* Validación de la descripción del producto temporal x falta de arichivo de prods, de haber archivo de productos, 
+                                        se podría validar que el código ingresado exista y traer la descripción desde el archivo. */
                     {
-                        printf("La descripción no puede estar vacía.\n");
-                        lineaValida = false;
+                        leerCadena(detalle.descripcion, LARGO_DESC, "Ingrese la descripción del producto: ");
+                        printf("\n");
+                        if (detalle.descripcion[0] == '\0')
+                        {
+                            printf("La descripción no puede estar vacía.\n");
+                            lineaValida = false;
+                        }
+
+                        //validación de la descripción del producto si hubiera archivos.
+
+                    }
+
+                    if (lineaValida) /* Validación de precio unitario y cantidad temporal x falta de archivo de prods, de haber archivo de productos, 
+                                       se podría validar que el código ingresado exista y traer el precio desde el archivo. */
+                    {
+                        do
+                        {
+                            leerFlotante("Ingrese el precio unitario: $", &precioUnitario);
+                            if (precioUnitario < 0)
+                            {
+                                printf("El precio no puede ser negativo.\n");
+                            }
+                        } while (precioUnitario < 0);
+
+                        do
+                        {
+                            leerEntero("Ingrese la cantidad: ", &detalle.cantidad);
+                            if (detalle.cantidad <= 0)
+                            {
+                                printf("La cantidad debe ser mayor que cero.\n");
+                            }
+                        } while (detalle.cantidad <= 0);
+
+                        detalle.nroFactura = nroFactura;
+                        detalle.precioUnitario = precioUnitario;
+                        detalle.subtotalLinea = precioUnitario * detalle.cantidad;
+                        nuevoNeto = netoGravado + detalle.subtotalLinea;
+                    }
+
+                    if (lineaValida)
+                    {
+                        detalles[cantidadLineas] = detalle;
+                        netoGravado = nuevoNeto;
+                        cantidadLineas++;
                     }
                 }
+            } while (cantidadLineas < capacidadDetalles && codigoIngresado != 0);
 
-                if (lineaValida)
-                {
-                    do
-                    {
-                        leerFlotante("Ingrese el precio unitario: $", &precioUnitario);
-                        if (precioUnitario < 0)
-                        {
-                            printf("El precio no puede ser negativo.\n");
-                        }
-                    } while (precioUnitario < 0);
-
-                    do
-                    {
-                        leerEntero("Ingrese la cantidad: ", &detalle.cantidad); 
-                        if (detalle.cantidad <= 0)
-                        {
-                            printf("La cantidad debe ser mayor que cero.\n");
-                        }
-                    } while (detalle.cantidad <= 0);
-
-                    detalle.nroFactura = nroFactura;
-                    detalle.precioUnitario = precioUnitario;
-                    detalle.subtotalLinea = precioUnitario * detalle.cantidad;
-                    nuevoNeto = netoGravado + detalle.subtotalLinea;
-                }
-
-                if (lineaValida)
-                {
-                    detalles[cantidadLineas] = detalle;
-                    netoGravado = nuevoNeto;
-                    cantidadLineas++;
-                }
-            }
-
-            //Comprueba si se ingresaron productos en la factura y, si es así, calcula el total y muestra la factura generada.
+            // Comprueba si se ingresaron productos en la factura y, si es así, calcula el total y muestra la factura generada.
             if (cantidadLineas == 0)
             {
                 printf("La factura no contiene productos; no se generó.\n");
@@ -911,20 +919,50 @@ bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[],
                 printf("\nFactura N° %d generada el %02d/%02d/%04d\n",
                        factura->nroFactura, factura->fechaEmision.dia, factura->fechaEmision.mes, factura->fechaEmision.anio);
                 printf("Cliente: %d - %s\n", factura->codigoCliente, factura->clienteSnapshot.nombreYApellido);
-                printf("%-10s | %20s | %10s | %10s | %6s\n", "Código", "Descripción", "Precio unitario", "Cantidad", "Total"); //Muestra la factura generada con los detalles de cada producto
+                printf("%-10s | %-50s | %17s | %10s | %12s\n", "Código", "Descripción", "Precio unitario", "Cantidad", "Total");
                 for (int i = 0; i < cantidadLineas; i++) // Recorre los detalles de la factura
                 {
-                    printf("%-10d | %20s | $%10.2f | %10d | $%6.2f\n",
-                        detalles[i].codigoArticulo, detalles[i].descripcion,
-                        detalles[i].precioUnitario, detalles[i].cantidad, detalles[i].subtotalLinea);
+                    printf("%-10d | %-50s | $%16.2f | %10d | $%11.2f\n",
+                           detalles[i].codigoArticulo, detalles[i].descripcion,
+                           detalles[i].precioUnitario, detalles[i].cantidad, detalles[i].subtotalLinea);
                 }
                 printf("Total de la factura: $%.2f\n", factura->totalFactura);
+                (*cantidadFacturas)++;
                 facturaGenerada = true;
             }
         }
     }
 
     return facturaGenerada;
+}
+
+void verListadoFacturas(Factura facturas[], int cantidadFacturas, DetalleFactura detalles[], int cantidadDetalles)
+{
+    if (cantidadFacturas <= 0)
+    {
+        printf("No hay facturas para mostrar.\n");
+    }
+    else
+    {
+        for (int i = 0; i < cantidadFacturas; i++)
+        {
+            Factura factura = facturas[i];
+            printf("\nFactura N° %d - Fecha: %02d/%02d/%04d - Cliente: %d\n",
+                   factura.nroFactura, factura.fechaEmision.dia, factura.fechaEmision.mes,
+                   factura.fechaEmision.anio, factura.codigoCliente);
+            printf("%-10s | %-50s | %17s | %10s | %12s\n", "Código", "Descripción", "Precio unitario", "Cantidad", "Total");
+            for (int j = 0; j < cantidadDetalles; j++)
+            {
+                if (detalles[j].nroFactura == factura.nroFactura)
+                {
+                    printf("%-10d | %-50s | $%16.2f | %10d | $%11.2f\n",
+                           detalles[j].codigoArticulo, detalles[j].descripcion,
+                           detalles[j].precioUnitario, detalles[j].cantidad, detalles[j].subtotalLinea);
+                }
+            }
+            printf("Total de la factura: $%.2f\n", factura.totalFactura);
+        }
+    }
 }
 
 #endif /* FACTUFUNCIONES_H_ */

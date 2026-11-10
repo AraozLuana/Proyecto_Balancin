@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-
 #include "utiles_Proyecto.h"
 #include "FactuFunciones.h" // esta tiene incluido "Estructuras.h" y define CANCELAR
 

@@ -16,6 +16,8 @@ NOTA DE ALUMNO: Este utiles.h ha sido modificado, algunas funciones están en pr
 #include <time.h>
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
+#include <limits.h> 
 
 #ifdef _WIN32
 #include <conio.h>
