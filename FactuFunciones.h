@@ -441,15 +441,15 @@ void MenuUsuario()
                 {
                 case op1:
                     printf("CREAR FUNCION GENERAR NUEVA FACTURA");
-                    pausa();
+                    
                     break;
                 case op2:
                     printf("CREAR FUNCION VER LISTADO DE FACTURAS");
-                    pausa();
+                    
                     break;
                 case op3:
                     printf("CREAR FUNCION ELIMINAR FACTURA DE LA BD");
-                    pausa();
+                    
                     break;
                 case op4:
                     printf("CREAR FUNCION VER LISTADO DE CLIENTES");
@@ -517,7 +517,7 @@ void MenuUsuario()
                 case op1:
 
                     verListadoDeProductos(archivoProductos);
-                    pausa();
+                    
                     break;
                 case op2:
                     printf("**********Registrar Producto**********\n\n");
