@@ -376,7 +376,7 @@ int registrarProducto(FILE *archivoProducts)
     leerEntero("Ingrese la cantidad vendida de este producto (-1) para salir: ", &product.cantVendida);
     while (product.cantVendida < SALIDA)
     {
-        leerEntero("La cantidad vendida no puede negativa. Ingrese la cantidad vendida de este producto (-1) para salir:(-1 para salir)", &product.precio);
+        leerEntero("La cantidad vendida no puede ser negativa. Ingrese la cantidad vendida de este producto (-1) para salir: ", &product.cantVendida);
     }
 
     if (product.cantVendida == SALIDA)
@@ -1032,7 +1032,7 @@ bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[],
                 }
             } while (!clienteValido);
 
-            memcpy(&nuevaFactura.clienteSnapshot, &clienteEncontrado.datos, sizeof(Persona));
+            nuevaFactura.clienteSnapshot = clienteEncontrado.datos;
             nuevaFactura.clienteSnapshot.nombreYApellido[LARGO_NOMBRE - 1] = '\0';
         }
         printf("\n");
@@ -1057,7 +1057,6 @@ bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[],
             do
             {
                 DetalleFactura detalle = {0}; // Inicializo la estructura de detalle de factura para almacenar los datos del producto ingresado
-                float precioUnitario = 0;     //
                 float nuevoNeto = 0;
                 bool lineaValida = true;
 
