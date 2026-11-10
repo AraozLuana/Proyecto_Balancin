@@ -32,8 +32,6 @@
 #define MAXIMO_INTENTOS 4
 #define CANCELAR -2
 #define SALIR 0
-#define CANT_ITEMS_MENU 4
-#define FILA_MENU 3
 #define FLECHA_ARRIBA 72
 #define FLECHA_ABAJO 80
 #define ENTER 13
