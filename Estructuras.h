@@ -15,6 +15,7 @@
 #define ALICUOTA_IVA_PROCESADOS 0.21
 #define LARGO_CODIGO 4
 #define LARGO_RESPUESTA 10
+#define LARGO_NOMBREYAPELLIDO 100
 
  
 /* ============================================================
