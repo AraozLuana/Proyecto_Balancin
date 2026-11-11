@@ -784,31 +784,69 @@ bool LogeoGestor(FILE *archivoUsuarios)
 
 void mostrar_pose1()
 {
-    printf("      /\\_/\\\n");
-    printf("     ( o.o )\n");
-    printf("      > ^ <\n");
-    printf("     /     \\\n");
-    printf("    |       |\n");
-    printf("    |  | |  |\n");
-    printf("    |__|_|__|\n");
-    printf("     ||   ||\n");
-    printf("     ||   ||\n");
-    printf("     ()   ()\n");
+    printf("..·´¯`·...·´¯`·...·´¯`·...·´¯`·...·´¯`·...·´¯`·..\n");
+	printf("..·´¯`·...·´¯`·. C A R G A N D O ..·´¯`·...·´¯`·.\n");
+	printf( "..·´¯`·...·´¯`·...·´¯`·...·´¯`·...·´¯`·...·´¯`·..\n");
+	printf( "                     XXXXX                      \n");
+	printf( "             _ooooooooooooooooooooo_            \n");
+	printf( "          _,oop888888888888888888888*           \n");
+	printf( "          8888b**               `**             \n");
+	printf( "          Y888b_.                               \n");
+	printf( "            8Y888bod888888888888b.              \n");
+	printf( "              *8888888888888888`888b            \n");
+	printf( "                                d888*            \n");
+	printf( "    ,_                         X888           \n");
+	printf( "	   ,88b._  XXXXXXXXXXXXXXXXXXXX`P           \n");
+	printf( "	   Y88[8o    XXXXXXXXXXXXXXXXXX              \n");
+	printf( "      P88888oo       ******                   \n");
+	printf( "        *888888888oo.__.  ___               \n");
+	printf( "           *88888888PXd88888oooooooo.____    \n");
+	printf( "             	`****XXXX`88888888888888b   \n");
+	printf( "                     XXXXX   °°°°°°°°°°   \n");
+	printf( "                     XXXXX                   \n");
+	printf( "                     XXXXd8_                 \n");
+	printf( "                     XXXXY8888o.             \n");
+	printf( "                     XXXXXY8888L._,   ooooo.\n");
+	printf( "                     XXXXX  `Y888888888888PPP\n");
+	printf( "                     XXXXX    `888888P     \n");
+	printf( "                     XXXXX                \n");
+	printf( "                     XXXXX                   \n");
+	printf( "                     XXXXX                   \n");
+	printf( "..·´¯`·...·´¯`·...·´¯`·...·´¯`·...·´¯`·...·´¯`·..\n");
 }
 
 // Pose 2: Brazos arriba (saludando o moviéndose)
 void mostrar_pose2() // FIGURA PRUEBA
 {
-    printf("     _\\_/_ \n");
-    printf("    ( o.o )\n");
-    printf("      > ^ <\n");
-    printf("     /     \\\n");
-    printf("    |       |\n");
-    printf("    |  | |  |\n");
-    printf("    |__|_|__|\n");
-    printf("     ||   ||\n");
-    printf("     ||   ||\n");
-    printf("     ()   ()\n");
+    printf( "..·´¯`·...·´¯`·...·´¯`·...·´¯`·...·´¯`·...·´¯`·..\n");
+	printf( "..·´¯`·...·´¯`·. C A R G A N D O ..·´¯`·...·´¯`·.\n");
+	printf( "..·´¯`·...·´¯`·...·´¯`·...·´¯`·...·´¯`·...·´¯`·..\n");
+	printf( "                      ,8888.                     \n");
+	printf( "               ,_.ooo,o8888booooooooo.           \n");
+	printf( "             _o88P8888888888888888888b           \n");
+	printf( "            d888**********************           \n");
+	printf( "            Y888_________________                \n");
+	printf( "             *Y`888888888888888888o._            \n");
+	printf( "               **`**************`*888.           \n");
+	printf( "                                 ,o888[           \n");
+	printf( "_,oo._      8888888888888888888.88PP*            \n");
+	printf( "888888bo_.  YPPPPP*****88888PP****               \n");
+	printf( " *`Y888888oooo_        Y888P                     \n");
+	printf( "     `*Y88888888888888ooooo.__                   \n");
+	printf( "           ****`YPP88888888888888888booo__       \n");
+	printf( "                     ]8888[****`Y88888888888.    \n");
+	printf( "                    ,8888P*          `***YPP*    \n");
+	printf( "                    d8888*                       \n");
+	printf( "                   ,888P*                        \n");
+	printf( "                   88,od88o._                 __.\n");
+	printf( "                 ,8888PY888888bo__  ,___oood8888b\n");
+	printf( "                ,8888P   `**Y888888o88888888888\n");
+	printf( "                d8Y8P         `*PP8YPPPPPP* \n");
+	printf( "               _._oo                             \n");
+	printf( "              J8888P                             \n");
+	printf( "             ,88888*                             \n");
+	printf( "             88888P                              \n");
+	printf( "..·´¯`·...·´¯`·...·´¯`·...·´¯`·...·´¯`·...·´¯`·..\n");
 }
 void pantallaCarga()
 {
