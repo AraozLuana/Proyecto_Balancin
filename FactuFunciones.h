@@ -9,7 +9,7 @@
 
 #include "Estructuras.h"
 #include "utiles_Proyecto.h"
-
+ 
 #ifdef _WIN32
 #include <conio.h>
 #include <windows.h>
