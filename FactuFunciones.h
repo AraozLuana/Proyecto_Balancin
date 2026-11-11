@@ -82,8 +82,7 @@ void eliminarFactura(FILE *archivoFacturas, FILE *archivoDetalles, int nroFactur
 int registrarProducto(FILE *archivoProducts);
 int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBaja);
 void BajaGestor(FILE *archivoUsuarios);
-void mostrar_pose1();
-void mostrar_pose2();
+void verListadoUsuarios(FILE *archivoUsers);
 
 // *********************************************************************************
 // Funciones para el menu con cursores
@@ -254,7 +253,6 @@ int registrarUsuario(FILE *archivoUsers)
             {
                 respuesta[i] = toupper((unsigned char)respuesta[i]);
             }
-            printf("DEBUG respuesta = [%s] largo = %d\n", respuesta, (int)strlen(respuesta));
             if (strcmp(respuesta, "SI") == 0 || strcmp(respuesta, "S") == 0)
             {
                 strcpy(busqueda.claveHash, user.claveHash);
@@ -262,7 +260,6 @@ int registrarUsuario(FILE *archivoUsers)
 
                 fseek(archivoUsers, (long)posicion * sizeof(Usuario), SEEK_SET);
                 fwrite(&busqueda, sizeof(Usuario), 1, archivoUsers);
-                fflush(archivoUsers);
                 return EXITO;
             }
             return SALIDA;
@@ -391,10 +388,10 @@ int registrarProducto(FILE *archivoProducts)
             return EXISTE_BD;
         }
     }
-    int write = fwrite(&product, sizeof(Articulo), 1, archivoProducts);
-    printf("%d", write);
+    // fwrite(&product, sizeof(Articulo), 1, archivoProducts);
 
-    return EXITO;
+    return fwrite(&product, sizeof(Articulo), 1, archivoProducts);
+    ;
 }
 
 int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBaja)
@@ -563,34 +560,34 @@ void MenuUsuario()
                     }
                     break;
                 case op3:
-                limpiarPantalla();
-                {
-                    FILE *archivoFacturas = fopen("bd_Facturas.dat", "rb+");
-                    FILE *archivoDetalles = fopen("bd_Detalles.dat", "rb+");
+                    limpiarPantalla();
+                    {
+                        FILE *archivoFacturas = fopen("bd_Facturas.dat", "rb+");
+                        FILE *archivoDetalles = fopen("bd_Detalles.dat", "rb+");
 
-                    if (archivoFacturas == NULL)
-                    {
-                        printf("No hay facturas cargadas para eliminar.\n");
-                    }
-                    else if (archivoDetalles == NULL)
-                    {
-                        printf("No se pudo abrir el archivo de detalles de facturas.\n");
-                    }
-                    else
-                    {
-                        eliminarFactura(archivoFacturas, archivoDetalles, 0);
-                    }
+                        if (archivoFacturas == NULL)
+                        {
+                            printf("No hay facturas cargadas para eliminar.\n");
+                        }
+                        else if (archivoDetalles == NULL)
+                        {
+                            printf("No se pudo abrir el archivo de detalles de facturas.\n");
+                        }
+                        else
+                        {
+                            eliminarFactura(archivoFacturas, archivoDetalles, 0);
+                        }
 
-                    if (archivoFacturas != NULL)
-                    {
-                        fclose(archivoFacturas);
+                        if (archivoFacturas != NULL)
+                        {
+                            fclose(archivoFacturas);
+                        }
+                        if (archivoDetalles != NULL)
+                        {
+                            fclose(archivoDetalles);
+                        }
+                        break;
                     }
-                    if (archivoDetalles != NULL)
-                    {
-                        fclose(archivoDetalles);
-                    }
-                    break;
-                }
                 case op4:
                     printf("CREAR FUNCION VER LISTADO DE CLIENTES");
                     break;
@@ -656,7 +653,7 @@ void MenuUsuario()
                 case op1:
 
                     verListadoDeProductos(archivoProductos);
-                    
+
                     break;
                 case op2:
                     printf("**********Registrar Producto**********\n\n");
@@ -695,14 +692,11 @@ void MenuUsuario()
                     }
                     else
                     {
-
                         fseek(archivoProductos, posicionRegistro * sizeof(Articulo), SEEK_SET);
                         fread(&product, sizeof(Articulo), 1, archivoProductos);
                         product.estado = INACTIVO; // se trabaja una BAJA LOGICA, no estamos borrando por completo el registro ya que no hay manera de deshacerlo. la buena practica es desactivar registros, no eliminarlos por completo
                         fseek(archivoProductos, posicionRegistro * sizeof(Articulo), SEEK_SET);
                         fwrite(&product, sizeof(Articulo), 1, archivoProductos);
-                        fflush(archivoProductos);
-
                         printf("Producto desactivado correctamente\n");
                     }
                     break;
@@ -785,12 +779,32 @@ void BajaGestor(FILE *archivoUsuarios)
 
         fseek(archivoUsuarios, (long)posicionRegistro * sizeof(Usuario), SEEK_SET); // volver al inicio del registro
         fwrite(&user, sizeof(Usuario), 1, archivoUsuarios);
-        fflush(archivoUsuarios);
 
         printf("Gestor desactivado correctamente\n");
     }
 }
+void verListadoUsuarios(FILE *archivoUsers)
+{
+    Usuario user;
+    rewind(archivoUsers);
+    if (fread(&user, sizeof(Usuario), 1, archivoUsers) == 0)
+    {
+        printf("No hay usuarios cargados para mostrar\n");
+    }
+    printf("==============================================================\n");
+    printf("                    CONSULTA DE USUARIOS                      \n");
+    printf("==============================================================\n");
+    printf("%-22s %-10s %-8s\n", "USUARIO", "ROL", "ESTADO");
+    printf("--------------------------------------------------------------\n");
 
+    while (fread(&user, sizeof(Usuario), 1, archivoUsers) == 1) // mientras haya registros
+    {
+        printf("%-22s %-10s %-8s\n",
+               user.nombreUsuario, // por una cuestion de seguridad, no muestro las contraseñas
+               user.rol_usuario == 1 ? "ADMIN" : "GESTOR",
+               user.activo == 1 ? "ACTIVO" : "INACTIVO");
+    }
+}
 // *********************************************************************************
 // MENÚ ADMIN
 // *********************************************************************************
@@ -805,6 +819,7 @@ void MenuAdmin()
     int op = 0;
     const char *menu[] = {"Dar de alta a un gestor\n",
                           "Dar de baja a un gestor\n",
+                          "Ver listado de usuarios\n",
                           "Salir"};
     int cant = sizeof(menu) / sizeof(menu[0]);
     prepararConsola();
@@ -824,7 +839,9 @@ void MenuAdmin()
         case op2:
             limpiarPantalla();
             BajaGestor(archivoUsuarios);
-
+            break;
+        case op3:
+            verListadoUsuarios(archivoUsuarios);
             break;
         }
         if (op != cant)
