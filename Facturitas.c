@@ -68,10 +68,14 @@ int main()
                         limpiarPantalla();
                         BajaGestor(archivoUsuarios);
                         break;
+                        case op3:
+                        limpiarPantalla();
+                        verListadoUsuarios(archivoUsuarios);
+                        break;
                     }
-                    if (op != op3)
+                    if (op != op4)
                         pausa();
-                } while (op != op3);
+                } while (op != op4);
             }
             break;
 
