@@ -241,7 +241,6 @@ int registrarUsuario(FILE *archivoUsers)
             {
                 respuesta[i] = toupper((unsigned char)respuesta[i]);
             }
-            printf("DEBUG respuesta = [%s] largo = %d\n", respuesta, (int)strlen(respuesta));
             if (strcmp(respuesta, "SI") == 0 || strcmp(respuesta, "S") == 0)
             {
                 strcpy(busqueda.claveHash, user.claveHash);
@@ -249,7 +248,6 @@ int registrarUsuario(FILE *archivoUsers)
 
                 fseek(archivoUsers, (long)posicion * sizeof(Usuario), SEEK_SET);
                 fwrite(&busqueda, sizeof(Usuario), 1, archivoUsers);
-                fflush(archivoUsers);
                 return EXITO;
             }
             return SALIDA;
@@ -376,10 +374,10 @@ int registrarProducto(FILE *archivoProducts)
             return EXISTE_BD;
         }
     }
-    int write = fwrite(&product, sizeof(Articulo), 1, archivoProducts);
-    printf("%d", write);
+    //fwrite(&product, sizeof(Articulo), 1, archivoProducts);
+    
 
-    return EXITO;
+    return fwrite(&product, sizeof(Articulo), 1, archivoProducts);;
 }
 int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBaja)
 {
@@ -556,14 +554,11 @@ void MenuUsuario()
                     }
                     else
                     {
-
                         fseek(archivoProductos, posicionRegistro * sizeof(Articulo), SEEK_SET);
                         fread(&product, sizeof(Articulo), 1, archivoProductos);
                         product.estado = INACTIVO; // se trabaja una BAJA LOGICA, no estamos borrando por completo el registro ya que no hay manera de deshacerlo. la buena practica es desactivar registros, no eliminarlos por completo
                         fseek(archivoProductos, posicionRegistro * sizeof(Articulo), SEEK_SET);
                         fwrite(&product, sizeof(Articulo), 1, archivoProductos);
-                        fflush(archivoProductos);
-
                         printf("Producto desactivado correctamente\n");
                     }
                     break;
@@ -646,7 +641,6 @@ void BajaGestor(FILE *archivoUsuarios)
 
         fseek(archivoUsuarios, (long)posicionRegistro * sizeof(Usuario), SEEK_SET); // volver al inicio del registro
         fwrite(&user, sizeof(Usuario), 1, archivoUsuarios);
-        fflush(archivoUsuarios);
 
         printf("Gestor desactivado correctamente\n");
     }
