@@ -10,6 +10,8 @@ int main()
     int resultado;
     FILE *archivoUsuarios;
     FILE *archivoProductos;
+    FILE *archivoFacturas;
+    FILE *archivoDetalles;
 
     if ((archivoUsuarios = fopen("bd_Users.dat", "rb+")) == NULL)
     {
@@ -18,6 +20,14 @@ int main()
     if ((archivoProductos = fopen("bd_Products.dat", "rb+")) == NULL)
     {
         archivoProductos = fopen("bd_Products.dat", "wb+");
+    }
+    if ((archivoFacturas = fopen("bd_Facturas.dat", "rb+")) == NULL)
+    {
+        archivoFacturas = fopen("bd_Facturas.dat", "wb+");
+    }
+    if ((archivoDetalles = fopen("bd_Detalles.dat", "rb+")) == NULL)
+    {
+        archivoDetalles = fopen("bd_Detalles.dat", "wb+");
     }
 
     // Ciclo general
@@ -78,7 +88,7 @@ int main()
 
                     switch (op)
                     {
-                    // ----- FACTURAS -----
+                    // FACTURAS
                     case SECC_FACTURAS + op1:
                         printf("CREAR FUNCION GENERAR NUEVA FACTURA");
                         break;
@@ -101,21 +111,27 @@ int main()
                         printf("CREAR FUNCION MODIFICAR CLIENTE");
                         break;
 
-                    // ----- ESTADISTICAS -----
+                    // ESTADISTICAS
                     case SECC_ESTADISTICAS + op1:
-                        printf("Desarrollar ver producto estrella\n");
+                        rewind(archivoFacturas);
+                        rewind(archivoDetalles);
+                        productoEstrella(archivoFacturas, archivoDetalles);
                         break;
                     case SECC_ESTADISTICAS + op2:
-                        printf("Desarrollar ver producto mas vendido\n");
+                    rewind(archivoFacturas);
+                    rewind(archivoDetalles);
+                        ProductoMasVendido(archivoFacturas, archivoDetalles);
                         break;
                     case SECC_ESTADISTICAS + op3:
-                        printf("Desarrollar ver mejores clientes SEGUN CRITERIO MENSAJE LUANA EN EL GRUPO\n");
+                        rewind(archivoFacturas);
+                        mejoresClientes(archivoFacturas);
                         break;
                     case SECC_ESTADISTICAS + op4:
-                        printf("Desarrollar ver ventas por zona");
+                        rewind(archivoFacturas);
+                        listado_VentasPorZona(archivoFacturas);
                         break;
 
-                    // ----- PRODUCTOS -----
+                    // PRODUCTOS
                     case SECC_PRODUCTOS + op1:
                         rewind(archivoProductos);
                         verListadoDeProductos(archivoProductos);

@@ -30,6 +30,12 @@
 #define op7 7
 #define ERROR (-1)
 
+// constantes de estadisticas
+// Son los máximos de elementos distintos que cada estadística puede manejar
+#define MAX_ZONAS 50
+#define MAX_CLIENTES 300
+#define MAX_ARTICULOS 300
+
 // Secciones de MenuUsuario: el retorno es SECCION + opcion (ej: SECC_PRODUCTOS + op2)
 #define SECC_FACTURAS 10
 #define SECC_ESTADISTICAS 20
@@ -83,6 +89,9 @@ void verListadoFacturas(FILE *archivoFacturas, FILE *archivoDetalles);
 void eliminarFactura(FILE *archivoFacturas, FILE *archivoDetalles, int nroFactura);
 int registrarProducto(FILE *archivoProducts);
 int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBaja);
+void listado_ClientesPorZona(FILE *archivoFacturas);
+void productoEstrella(FILE *archivoFacturas, FILE *archivoDetalles);
+void mejoresClientes(FILE *archivoFacturas);
 void BajaGestor(FILE *archivoUsuarios);
 void mostrar_pose1();
 void mostrar_pose2();
@@ -431,12 +440,12 @@ int MenuUsuario()
     const char *vecMenuFacturas[] = {"Generar nueva factura", "Ver listado de facturas", "Eliminar factura de la base de datos", "Ver listado de clientes", "Agregar cliente", "Eliminar cliente", "Modificar cliente", "Volver"};
     const char *vecMenuEstadisticas[] = {"Ver producto estrella", "Ver producto mas vendido", "Ver mejores clientes", "Ver ventas por zona", "Volver"};
     const char *vecMenuProductos[] = {"Ver listado de productos", "Agregar producto nuevo", "Dar de baja un producto", "Volver"};
-// Calcular la cantidad de opciones en cada menú
+    // Calcular la cantidad de opciones en cada menú
     int cantOpcionesMenuPrincipal = sizeof(VecMenuPrincipal) / sizeof(VecMenuPrincipal[0]);
     int cantOpcionesFacturas = sizeof(vecMenuFacturas) / sizeof(vecMenuFacturas[0]);
     int cantOpcionesEstadisticas = sizeof(vecMenuEstadisticas) / sizeof(vecMenuEstadisticas[0]);
     int cantOpcionesProductos = sizeof(vecMenuProductos) / sizeof(vecMenuProductos[0]);
- 
+
     utf8();
     prepararConsola();
 
@@ -449,7 +458,7 @@ int MenuUsuario()
         {
         case op1:
             op = elegirOpcion("SECCION FACTURAS", vecMenuFacturas, cantOpcionesFacturas);
-            if (op != cantOpcionesFacturas) //validacion por si se selecciona la opcion de volver, que no haga nada y vuelva al menu principal
+            if (op != cantOpcionesFacturas) // validacion por si se selecciona la opcion de volver, que no haga nada y vuelva al menu principal
             {
                 resultado = SECC_FACTURAS + op;
             }
@@ -501,7 +510,6 @@ void AltaGestor(FILE *archivoUsuarios)
     {
         printf("\n¡Registro exitoso!\n");
     }
-
 }
 
 // BAJA GESTOR: baja logica.
@@ -975,6 +983,383 @@ void eliminarFactura(FILE *archivoFacturas, FILE *archivoDetalles, int nroFactur
     }
 
     printf("Factura N° %d anulada correctamente.\n", nroFactura);
+}
+
+// Cantidad de ventas que hay en cada localidad.
+// La localidad se compara sin distinguir mayúsculas. Las facturas anuladas no cuentan.
+// se arma una lista de zonas con dos vectores auxiliares paralelos (zonasNombre, zonasTotalDinero y zonasCantVentas).
+// Para cada factura se cuenta la venta por zona y al final el monto total de la misma.
+void listado_VentasPorZona(FILE *archivoFacturas)
+{
+    int i, j, k;
+    int cantidadFacturas = 0;
+    int cantidadDeZonas = 0;
+    int posicionZonaEncontrada;
+    bool clienteYaContadoEnZona;
+    bool hayZonasSinAnalizar = false;
+    Factura facturaActual;
+    Factura facturaAnterior;
+    char zonasNombre[MAX_ZONAS][LARGO_LOCALIDAD];
+    int zonasCantVentas[MAX_ZONAS] = {0};
+    float zonasTotalDinero[MAX_ZONAS] = {0}; // Vector paralelo para acumular el dinero
+
+    printf("*****VENTAS Y RECAUDACION POR ZONA*****\n");
+
+    if (archivoFacturas == NULL)
+    {
+        printf("No se pudo leer el archivo de facturas.\n");
+        return;
+    }
+
+    // Se cuentan las facturas del archivo
+    rewind(archivoFacturas);
+    while (fread(&facturaActual, sizeof(Factura), 1, archivoFacturas) == 1)
+    {
+        cantidadFacturas++;
+    }
+
+    for (i = 0; i < cantidadFacturas; i++)
+    {
+        fseek(archivoFacturas, (long)i * sizeof(Factura), SEEK_SET);
+        fread(&facturaActual, sizeof(Factura), 1, archivoFacturas);
+
+        // Solo se analizan las facturas que no están anuladas
+        if (facturaActual.estado != FACTURA_ANULADA)
+        {
+            // Se busca la zona en la lista; si no está se agrega (para todas las facturas válidas)
+            posicionZonaEncontrada = NO_ENCONTRADO;
+            k = 0;
+            while (k < cantidadDeZonas && posicionZonaEncontrada == NO_ENCONTRADO)
+            {
+                if (_stricmp(zonasNombre[k], facturaActual.clienteSnapshot.localidad) == 0)
+                {
+                    posicionZonaEncontrada = k;
+                }
+                k++;
+            }
+
+            if (posicionZonaEncontrada == NO_ENCONTRADO)
+            {
+                if (cantidadDeZonas < MAX_ZONAS)
+                {
+                    strcpy(zonasNombre[cantidadDeZonas], facturaActual.clienteSnapshot.localidad);
+                    posicionZonaEncontrada = cantidadDeZonas;
+                    cantidadDeZonas++;
+                }
+                else
+                {
+                    hayZonasSinAnalizar = true;
+                }
+            }
+
+            // Si la zona fue encontrada o ingresada con éxito, acumulamos el dinero
+            if (posicionZonaEncontrada != NO_ENCONTRADO)
+            {
+                zonasTotalDinero[posicionZonaEncontrada] += facturaActual.totalFactura;
+
+                // Conteo de clientes únicos por zona (lógica original)
+                clienteYaContadoEnZona = false;
+                j = 0;
+                while (j < i && !clienteYaContadoEnZona)
+                {
+                    fseek(archivoFacturas, (long)j * sizeof(Factura), SEEK_SET);
+                    fread(&facturaAnterior, sizeof(Factura), 1, archivoFacturas);
+
+                    if (facturaAnterior.estado != FACTURA_ANULADA &&
+                        facturaAnterior.codigoCliente == facturaActual.codigoCliente &&
+                        _stricmp(facturaAnterior.clienteSnapshot.localidad, facturaActual.clienteSnapshot.localidad) == 0)
+                    {
+                        clienteYaContadoEnZona = true;
+                    }
+                    j++;
+                }
+
+                if (!clienteYaContadoEnZona)
+                {
+                    zonasCantVentas[posicionZonaEncontrada]++;
+                }
+            }
+        }
+    }
+
+    printf("\n");
+    if (cantidadDeZonas == 0)
+    {
+        printf("----No hay facturas en existencia----\n");
+    }
+    else
+    {
+        for (k = 0; k < cantidadDeZonas; k++)
+        {
+            printf("-%s: %d venta/s | Total recaudado: $%.2f\n",
+                   zonasNombre[k], zonasCantVentas[k], zonasTotalDinero[k]);
+        }
+        if (hayZonasSinAnalizar)
+        {
+            printf("\nAviso: hay más de %d zonas distintas, las que no entraron en la lista no se muestran.\n", MAX_ZONAS);
+        }
+    }
+}
+
+// Producto mas vendido: El articulo que mas se vendió por unidad, sin importar el total de dinero recaudado.
+void ProductoMasVendido(FILE *archivoFacturas, FILE *archivoDetalles)
+{
+    int i;
+    int cantidadDeArticulos = 0; // cuántas casillas de la lista de artículos están usadas
+    int posicionArticuloEncontrado;
+    int posicionMejorArticulo;
+    bool facturaValida;
+    bool hayArticulosSinAnalizar = false; // se pone en true si aparecen más artículos que MAX_ARTICULOS
+    DetalleFactura detalleActual;
+    Factura facturaBuscada;
+    int artCodigo[MAX_ARTICULOS]; // vectores auxiliares: una casilla por artículo distinto
+    char artNombre[MAX_ARTICULOS][LARGO_DESC];
+    int artUnidades[MAX_ARTICULOS];
+
+    printf("*****PRODUCTO MAS VENDIDO*****\n");
+
+    if (archivoFacturas == NULL || archivoDetalles == NULL)
+    {
+        printf("No se pudo acceder a los archivos de facturas o detalles.\n");
+        return;
+    }
+
+}
+
+// Producto estrella: el artículo que más dinero dio. Las líneas de facturas anuladas no cuentan.
+// Los artículos se identifican por su código.
+// Se arma una lista de artículos (artCodigo, artNombre, artUnidades y artTotal, vectores auxiliares paralelos)
+// sumando unidades y dinero de cada artículo; al final se elige el de mayor total.
+void productoEstrella(FILE *archivoFacturas, FILE *archivoDetalles)
+{
+    int i;
+    int cantidadDeArticulos = 0; // cuántas casillas de la lista de artículos están usadas
+    int posicionArticuloEncontrado;
+    int posicionMejorArticulo;
+    bool facturaValida;
+    bool hayArticulosSinAnalizar = false; // se pone en true si aparecen más artículos que MAX_ARTICULOS
+    DetalleFactura detalleActual;
+    Factura facturaBuscada;
+    int artCodigo[MAX_ARTICULOS]; // vectores auxiliares: una casilla por artículo distinto
+    char artNombre[MAX_ARTICULOS][LARGO_DESC];
+    int artUnidades[MAX_ARTICULOS];
+    float artTotal[MAX_ARTICULOS];
+
+    printf("*****PRODUCTO ESTRELLA*****\n");
+
+    if (archivoFacturas == NULL || archivoDetalles == NULL)
+    {
+        printf("No se pudo acceder a los archivos de facturas o detalles.\n");
+        return;
+    }
+
+    // Cada vuelta lee una línea de detalle del archivo (cada línea es un artículo vendido dentro de una factura)
+    rewind(archivoDetalles);
+    while (fread(&detalleActual, sizeof(DetalleFactura), 1, archivoDetalles) == 1)
+    {
+        // ¿la factura de esta línea existe y no está anulada?
+        // Se recorre el archivo de facturas buscando la que tenga el mismo número que la línea
+        facturaValida = false;
+        rewind(archivoFacturas);
+        while (!facturaValida && fread(&facturaBuscada, sizeof(Factura), 1, archivoFacturas) == 1)
+        {
+            if (facturaBuscada.nroFactura == detalleActual.nroFactura && facturaBuscada.estado != FACTURA_ANULADA)
+            {
+                facturaValida = true;
+            }
+        }
+
+        if (facturaValida)
+        {
+            // posicionArticuloEncontrado guarda en qué casilla de la lista está este artículo (NO_ENCONTRADO = todavía no está)
+            posicionArticuloEncontrado = NO_ENCONTRADO;
+            i = 0;
+            // i recorre los artículos ya registrados buscando este por su código
+            while (i < cantidadDeArticulos && posicionArticuloEncontrado == NO_ENCONTRADO)
+            {
+                if (artCodigo[i] == detalleActual.codigoArticulo)
+                {
+                    posicionArticuloEncontrado = i;
+                }
+                i++;
+            }
+
+            // artículo nuevo: se agrega a la lista; si ya estaba, se le suman unidades y dinero
+            if (posicionArticuloEncontrado == NO_ENCONTRADO)
+            {
+                if (cantidadDeArticulos < MAX_ARTICULOS)
+                {
+                    artCodigo[cantidadDeArticulos] = detalleActual.codigoArticulo;
+                    strcpy(artNombre[cantidadDeArticulos], detalleActual.descripcion);
+                    artUnidades[cantidadDeArticulos] = detalleActual.cantidad;
+                    artTotal[cantidadDeArticulos] = detalleActual.subtotalLinea;
+                    cantidadDeArticulos++;
+                }
+                else
+                {
+                    hayArticulosSinAnalizar = true; // la lista está llena: este artículo no entra
+                }
+            }
+            else
+            {
+                artUnidades[posicionArticuloEncontrado] += detalleActual.cantidad;
+                artTotal[posicionArticuloEncontrado] += detalleActual.subtotalLinea;
+            }
+        }
+    }
+
+    printf("\n");
+    if (cantidadDeArticulos == 0)
+    {
+        printf("----No hay facturas en existencia----\n");
+    }
+    else
+    {
+        // se toma el primer artículo como el mejor y se lo compara con los demás (i arranca en 1)
+        posicionMejorArticulo = 0;
+        // i recorre el resto de la lista; si encuentra uno con mayor total, pasa a ser el mejor
+        for (i = 1; i < cantidadDeArticulos; i++)
+        {
+            if (artTotal[i] > artTotal[posicionMejorArticulo])
+            {
+                posicionMejorArticulo = i;
+            }
+        }
+        printf("Artículo: %s\n", artNombre[posicionMejorArticulo]);
+        printf("Total recaudado: $%.2f\n", artTotal[posicionMejorArticulo]);
+        printf("Unidades vendidas: %d\n", artUnidades[posicionMejorArticulo]);
+        if (hayArticulosSinAnalizar)
+        {
+            printf("\nAviso: hay más de %d artículos distintos, los que no entraron en la lista no se tuvieron en cuenta.\n", MAX_ARTICULOS);
+        }
+    }
+}
+
+void mejoresClientes(FILE *archivoFacturas)
+{
+    int i;
+    int cantidadDeClientes = 0;
+    int posicionClienteEncontrado;
+    int posicionMejorCliente[3] = {-1, -1, -1}; // Inicializamos en -1 para indicar que están vacíos
+    bool hayClientesSinAnalizar = false;
+    Factura facturaActual;
+    int clienteNro[MAX_CLIENTES];
+    char clienteNombre[MAX_CLIENTES][LARGO_NOMBRE];
+    float clienteTotal[MAX_CLIENTES];
+    int clienteFacturas[MAX_CLIENTES];
+
+    printf("*****MEJORES CLIENTES*****\n");
+
+    if (archivoFacturas == NULL)
+    {
+        printf("No se pudo leer el archivo de facturas.\n");
+        return;
+    }
+
+    // Cada vuelta lee una factura del archivo
+    rewind(archivoFacturas);
+    while (fread(&facturaActual, sizeof(Factura), 1, archivoFacturas) == 1)
+    {
+        // Solo se analizan las facturas que no están anuladas
+        if (facturaActual.estado != FACTURA_ANULADA)
+        {
+            posicionClienteEncontrado = NO_ENCONTRADO;
+            i = 0;
+            while (i < cantidadDeClientes && posicionClienteEncontrado == NO_ENCONTRADO)
+            {
+                if (clienteNro[i] == facturaActual.codigoCliente)
+                {
+                    posicionClienteEncontrado = i;
+                }
+                i++;
+            }
+
+            if (posicionClienteEncontrado == NO_ENCONTRADO)
+            {
+                if (cantidadDeClientes < MAX_CLIENTES)
+                {
+                    clienteNro[cantidadDeClientes] = facturaActual.codigoCliente;
+                    strcpy(clienteNombre[cantidadDeClientes], facturaActual.clienteSnapshot.nombreYApellido);
+                    clienteTotal[cantidadDeClientes] = facturaActual.totalFactura;
+                    clienteFacturas[cantidadDeClientes] = 1;
+                    cantidadDeClientes++;
+                }
+                else
+                {
+                    hayClientesSinAnalizar = true;
+                }
+            }
+            else
+            {
+                clienteTotal[posicionClienteEncontrado] += facturaActual.totalFactura;
+                clienteFacturas[posicionClienteEncontrado]++;
+            }
+        }
+    }
+
+    printf("\n");
+    if (cantidadDeClientes == 0)
+    {
+        printf("----No hay facturas en existencia----\n");
+    }
+    else
+    {
+        // Algoritmo correcto para encontrar los 3 mayores
+        for (i = 0; i < cantidadDeClientes; i++)
+        {
+            if (posicionMejorCliente[0] == -1 || clienteTotal[i] > clienteTotal[posicionMejorCliente[0]])
+            {
+                posicionMejorCliente[2] = posicionMejorCliente[1];
+                posicionMejorCliente[1] = posicionMejorCliente[0];
+                posicionMejorCliente[0] = i;
+            }
+            else if (posicionMejorCliente[1] == -1 || clienteTotal[i] > clienteTotal[posicionMejorCliente[1]])
+            {
+                posicionMejorCliente[2] = posicionMejorCliente[1];
+                posicionMejorCliente[1] = i;
+            }
+            else if (posicionMejorCliente[2] == -1 || clienteTotal[i] > clienteTotal[posicionMejorCliente[2]])
+            {
+                posicionMejorCliente[2] = i;
+            }
+        }
+
+        // Mostrar resultados asegurándose de que existan los clientes
+        if (posicionMejorCliente[0] != -1)
+        {
+            printf("Cliente estrella:\n");
+            printf("Cliente: %s\n", clienteNombre[posicionMejorCliente[0]]);
+            printf("Cliente Nro: %d\n", clienteNro[posicionMejorCliente[0]]);
+            printf("Total gastado: $%.2f\n", clienteTotal[posicionMejorCliente[0]]);
+            printf("Cantidad de facturas: %d\n", clienteFacturas[posicionMejorCliente[0]]);
+            printf("\n");
+        }
+
+        if (posicionMejorCliente[1] != -1)
+        {
+            printf("Segundo cliente:\n");
+            printf("Cliente: %s\n", clienteNombre[posicionMejorCliente[1]]);
+            printf("Cliente Nro: %d\n", clienteNro[posicionMejorCliente[1]]);
+            printf("Total gastado: $%.2f\n", clienteTotal[posicionMejorCliente[1]]);
+            printf("Cantidad de facturas: %d\n", clienteFacturas[posicionMejorCliente[1]]);
+            printf("\n");
+        }
+
+        if (posicionMejorCliente[2] != -1)
+        {
+            printf("Tercer cliente:\n");
+            printf("Cliente: %s\n", clienteNombre[posicionMejorCliente[2]]);
+            printf("Cliente Nro: %d\n", clienteNro[posicionMejorCliente[2]]);
+            printf("Total gastado: $%.2f\n", clienteTotal[posicionMejorCliente[2]]);
+            printf("Cantidad de facturas: %d\n", clienteFacturas[posicionMejorCliente[2]]);
+            printf("\n");
+        }
+
+        if (hayClientesSinAnalizar)
+        {
+            printf("Aviso: hay más de %d clientes distintos, los que no entraron en la lista no se tuvieron en cuenta.\n", MAX_CLIENTES);
+        }
+    }
 }
 
 #endif /* FACTUFUNCIONES_H_ */
