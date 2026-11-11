@@ -48,7 +48,7 @@
 // Resultados de ambas funciones de registrar
 #define EXITO 1
 #define EXISTE_BD 2
-#define SALIDA -1
+#define SALIDA -2
 
 // *********************************************************************************
 // PROTOTIPOS
@@ -83,6 +83,11 @@ int registrarProducto(FILE *archivoProducts);
 int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBaja);
 void BajaGestor(FILE *archivoUsuarios);
 void verListadoUsuarios(FILE *archivoUsers);
+int buscarPosicionRegistroClientes(FILE *archivoClientes, int codigoClienteBaja);
+void verListadoClientes(FILE *archivoClientes);
+int registrarCliente(FILE *archivoCliente);
+void mostrar_pose1();
+void mostrar_pose2();
 
 // *********************************************************************************
 // Funciones para el menu con cursores
@@ -412,6 +417,124 @@ int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBa
         return NO_ENCONTRADO;
     }
 }
+int buscarPosicionRegistroCliente(FILE *archivoClientes, int codigoClienteBaja)
+{
+    Cliente client;
+    int posicion = 0;
+    while (fread(&client, sizeof(Cliente), 1, archivoClientes)) // fread retorna 1 si esta bien, mientras que exista. cuando no haya mas que sea endoffile, termina (porque sería 0)
+    {
+
+        if (client.codigo == codigoClienteBaja)
+        {
+            return posicion;
+        }
+        posicion++;
+    }
+    if (client.codigo != codigoClienteBaja)
+    {
+        return NO_ENCONTRADO;
+    }
+}
+void verListadoClientes(FILE *archivoClientes)
+{
+    Cliente cliente;
+    rewind(archivoClientes);
+    if (fread(&cliente, sizeof(Cliente), 1, archivoClientes) == 0)
+    {
+        printf("No hay clientes cargados para mostrar\n");
+    }
+    rewind(archivoClientes);
+    printf("=============================================================\n");
+    printf("                    CONSULTA DE CLIENTES                     \n");
+    printf("=============================================================\n");
+    printf("%-8s %-30s %-12s %-8s\n", "CODIGO", "NOMBRE Y APELLIDO", "DNI", "ESTADO");
+    printf("-------------------------------------------------------------\n");
+
+    while (fread(&cliente, sizeof(Cliente), 1, archivoClientes) == 1)
+    {
+        
+        printf("%-8d %-30s %-12d %-8s\n",
+               cliente.codigo,
+               cliente.datos.nombreYApellido,
+               cliente.datos.numeroDNI,
+               cliente.activo == ACTIVO ? "ACTIVO" : "INACTIVO");
+    }
+    printf("==========================================================================\n");
+}
+int registrarCliente(FILE *archivoCliente)
+{
+    Cliente client;
+    Cliente busqueda;
+    char respuesta[LARGO_RESPUESTA];
+    int posicion = 0;
+    int i;
+
+    client.activo = ACTIVO;
+
+    leerCadena(client.datos.nombreYApellido, LARGO_NOMBREYAPELLIDO, "Nombre y apellido del cliente (-1 para salir): ");
+    while (client.datos.nombreYApellido[0] == '\0')
+    {
+        printf("El nombre y apellido  no puede estar vacío.\n");
+        leerCadena(client.datos.nombreYApellido, LARGO_NOMBREYAPELLIDO, "Nombre y apellido del cliente (-1 para salir): ");
+    }
+    if (strcmp(client.datos.nombreYApellido, "-1") == 0)
+    {
+        return SALIDA;
+    }
+    leerEntero("Ingrese el DNI del cliente a registrar (-1 para salir)", &client.datos.numeroDNI);
+    while (client.datos.numeroDNI == 0)
+    {
+        printf("El dni no puede ser 0  no puede estar vacío.\n");
+        leerEntero("Ingrese el DNI del cliente a registrar (-1 para salir)", &client.datos.numeroDNI);
+    }
+    if (client.datos.numeroDNI == SALIDA)
+    {
+        return SALIDA;
+    }
+    leerEntero("Ingrese el codigo cliente a registrar (-1 para salir)", &client.codigo);
+    while (client.codigo == 0)
+    {
+        printf("El codigo del cliente no puede ser 0  no puede estar vacío.\n");
+        leerEntero("Ingrese el codigo cliente a registrar (-1 para salir)", &client.codigo);
+    }
+    if (client.codigo == SALIDA)
+    {
+        return SALIDA;
+    }
+
+    rewind(archivoCliente);
+    while (fread(&busqueda, sizeof(Cliente), 1, archivoCliente) == 1)
+    {
+        if (busqueda.codigo == client.codigo)
+        {
+            if (busqueda.activo == ACTIVO)
+            {
+                return EXISTE_BD;
+            }
+
+            leerCadena(respuesta, LARGO_RESPUESTA, "Este cliente esta desactivado. Desea activarlo [SI/NO]? ");
+            for (i = 0; respuesta[i] != '\0'; i++)
+            {
+                respuesta[i] = toupper((unsigned char)respuesta[i]);
+            }
+            if (strcmp(respuesta, "SI") == 0 || strcmp(respuesta, "S") == 0)
+            {
+                busqueda.activo = ACTIVO;
+
+                fseek(archivoCliente, (long)posicion * sizeof(Cliente), SEEK_SET);
+                fwrite(&busqueda, sizeof(Cliente), 1, archivoCliente);
+                return EXITO;
+            }
+            return SALIDA;
+        }
+        posicion++;
+    }
+
+    fseek(archivoCliente, 0L, SEEK_END);
+    fwrite(&client, sizeof(Cliente), 1, archivoCliente);
+    fflush(archivoCliente);
+    return EXITO;
+}
 
 // *********************************************************************************
 // MENÚ GESTOR
@@ -421,7 +544,7 @@ void MenuUsuario()
 {
     int op = 0;
     char *VecMenuPrincipal[] = {"Facturas", "Estadisticas", "Productos", "Salir"};
-    char *vecMenuFacturas[] = {"Generar nueva factura", "Ver listado de facturas", "Eliminar factura de la base de datos", "Ver listado de clientes", "Agregar cliente", "Eliminar cliente", "Modificar cliente", "Volver"};
+    char *vecMenuFacturas[] = {"Generar nueva factura", "Ver listado de facturas", "Eliminar factura de la base de datos", "Ver listado de clientes", "Agregar cliente", "Eliminar cliente", "Volver"};
     char *vecMenuEstadisticas[] = {"Ver producto estrella", "Ver producto mas vendido", "Ver mejores clientes", "Ver ventas por zona", "Volver"};
     char *vecMenuProductos[] = {"Ver listado de productos", "Agregar producto nuevo", "Dar de baja un producto", "Volver"};
 
@@ -433,7 +556,9 @@ void MenuUsuario()
     int cantOpcionesProductos = sizeof(vecMenuProductos) / sizeof(vecMenuProductos[0]);
     // Creacion de los archivos
     FILE *archivoProductos;
-    FILE *archivoEstadisticas;
+    FILE *archivoFacturas;
+    FILE *archivoClientes;
+    FILE *archivoDetalles;
     prepararConsola();
 
     do
@@ -454,10 +579,6 @@ void MenuUsuario()
                 {
                 case op1:
                 {
-                    FILE *archivoFacturas;
-                    FILE *archivoProductos;
-                    FILE *archivoDetalles;
-                    FILE *archivoClientes;
                     Factura facturaActual = {0};
                     Factura facturaGuardada;
                     DetalleFactura detallesFactura[MAX_DETALLES_FACTURA];
@@ -589,16 +710,66 @@ void MenuUsuario()
                         break;
                     }
                 case op4:
-                    printf("CREAR FUNCION VER LISTADO DE CLIENTES");
+                    if ((archivoClientes = fopen("bd_Clients.dat", "rb+")) == NULL)
+                    {
+                        archivoClientes = fopen("bd_Clients.dat", "wb+");
+                    }
+                    verListadoClientes(archivoClientes);
+                    fclose(archivoClientes);
                     break;
                 case op5:
-                    printf("CREAR FUNCION AGREGAR CLIENTE");
+                    if ((archivoClientes = fopen("bd_Clients.dat", "rb+")) == NULL)
+                    {
+                        archivoClientes = fopen("bd_Clients.dat", "wb+");
+                    }
+                    printf("**********Registrar Cliente**********\n\n");
+
+                    int resultado = registrarCliente(archivoClientes);
+
+                    if (resultado == EXISTE_BD)
+                    {
+                        printf("Cliente ya existente, reintente\n");
+                    }
+                    else if (resultado == SALIDA)
+                    {
+                        printf("No se registro el cliente (cancelado)");
+                    }
+                    else
+                    {
+                        printf("\n¡Registro exitoso!\n");
+                    }
+                    fclose(archivoClientes);
+                    pausa();
                     break;
                 case op6:
-                    printf("CREAR FUNCION ELIMINAR CLIENTE");
-                    break;
-                case op7:
-                    printf("CREAR FUNCION MODIFICAR CLIENTE");
+                    if ((archivoClientes = fopen("bd_Clients.dat", "rb+")) == NULL)
+                    {
+                        archivoClientes = fopen("bd_Clients.dat", "wb+");
+                    }
+                    printf("**********Dar de baja un Cliente**********\n\n");
+                    int codigo = 0;
+                    int posicionRegistro = 0;
+                    Cliente client;
+                    leerEntero("Ingrese el codigo del cliente que quiere dar de baja (-1 para salir)", &codigo);
+                    if (codigo == SALIDA)
+                    {
+                        printf("No se hizo la baja  (cancelado)\n");
+                    }
+                    posicionRegistro = buscarPosicionRegistroCliente(archivoClientes, codigo);
+                    if (posicionRegistro == NO_ENCONTRADO)
+                    {
+                        printf("No se ha encontrado el cliente\n");
+                    }
+                    else
+                    {
+                        fseek(archivoClientes, posicionRegistro * sizeof(Cliente), SEEK_SET);
+                        fread(&client, sizeof(Cliente), 1, archivoClientes);
+                        client.activo = INACTIVO; // se trabaja una BAJA LOGICA, no estamos borrando por completo el registro ya que no hay manera de deshacerlo. la buena practica es desactivar registros, no eliminarlos por completo
+                        fseek(archivoClientes, posicionRegistro * sizeof(Cliente), SEEK_SET);
+                        fwrite(&client, sizeof(Cliente), 1, archivoClientes);
+                        printf("Cliente desactivado correctamente\n");
+                    }
+                    fclose(archivoClientes);
                     break;
                 }
                 if (op != cantOpcionesFacturas)
