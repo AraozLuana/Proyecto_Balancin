@@ -93,8 +93,7 @@ void listado_ClientesPorZona(FILE *archivoFacturas);
 void productoEstrella(FILE *archivoFacturas, FILE *archivoDetalles);
 void mejoresClientes(FILE *archivoFacturas);
 void BajaGestor(FILE *archivoUsuarios);
-void mostrar_pose1();
-void mostrar_pose2();
+void verListadoUsuarios(FILE *archivoUsers);
 
 // *********************************************************************************
 // Funciones para el menu con cursores
@@ -265,7 +264,6 @@ int registrarUsuario(FILE *archivoUsers)
             {
                 respuesta[i] = toupper((unsigned char)respuesta[i]);
             }
-            printf("DEBUG respuesta = [%s] largo = %d\n", respuesta, (int)strlen(respuesta));
             if (strcmp(respuesta, "SI") == 0 || strcmp(respuesta, "S") == 0)
             {
                 strcpy(busqueda.claveHash, user.claveHash);
@@ -273,7 +271,6 @@ int registrarUsuario(FILE *archivoUsers)
 
                 fseek(archivoUsers, (long)posicion * sizeof(Usuario), SEEK_SET);
                 fwrite(&busqueda, sizeof(Usuario), 1, archivoUsers);
-                fflush(archivoUsers);
                 return EXITO;
             }
             return SALIDA;
@@ -402,10 +399,10 @@ int registrarProducto(FILE *archivoProducts)
             return EXISTE_BD;
         }
     }
-    int write = fwrite(&product, sizeof(Articulo), 1, archivoProducts);
-    printf("%d", write);
+    // fwrite(&product, sizeof(Articulo), 1, archivoProducts);
 
-    return EXITO;
+    return fwrite(&product, sizeof(Articulo), 1, archivoProducts);
+    ;
 }
 
 int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBaja)
@@ -543,12 +540,32 @@ void BajaGestor(FILE *archivoUsuarios)
 
         fseek(archivoUsuarios, (long)posicionRegistro * sizeof(Usuario), SEEK_SET); // volver al inicio del registro
         fwrite(&user, sizeof(Usuario), 1, archivoUsuarios);
-        fflush(archivoUsuarios);
 
         printf("Gestor desactivado correctamente\n");
     }
 }
+void verListadoUsuarios(FILE *archivoUsers)
+{
+    Usuario user;
+    rewind(archivoUsers);
+    if (fread(&user, sizeof(Usuario), 1, archivoUsers) == 0)
+    {
+        printf("No hay usuarios cargados para mostrar\n");
+    }
+    printf("==============================================================\n");
+    printf("                    CONSULTA DE USUARIOS                      \n");
+    printf("==============================================================\n");
+    printf("%-22s %-10s %-8s\n", "USUARIO", "ROL", "ESTADO");
+    printf("--------------------------------------------------------------\n");
 
+    while (fread(&user, sizeof(Usuario), 1, archivoUsers) == 1) // mientras haya registros
+    {
+        printf("%-22s %-10s %-8s\n",
+               user.nombreUsuario, // por una cuestion de seguridad, no muestro las contraseñas
+               user.rol_usuario == 1 ? "ADMIN" : "GESTOR",
+               user.activo == 1 ? "ACTIVO" : "INACTIVO");
+    }
+}
 // *********************************************************************************
 // MENÚ ADMIN
 // *********************************************************************************
@@ -556,6 +573,7 @@ int MenuAdmin()
 {
     const char *menu[] = {"Dar de alta a un gestor\n",
                           "Dar de baja a un gestor\n",
+                          "Ver listado de usuarios\n",
                           "Salir"};
     int cant = sizeof(menu) / sizeof(menu[0]);
     prepararConsola();
