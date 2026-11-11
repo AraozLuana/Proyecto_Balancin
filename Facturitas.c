@@ -1,6 +1,4 @@
 #include <stdio.h>
-#include <string.h>
-
 #include "utiles_Proyecto.h"
 #include "FactuFunciones.h" // esta tiene incluido "Estructuras.h" y define CANCELAR
 
@@ -181,12 +179,15 @@ int main()
             break;
 
         default:
-            printf("ERROR DE CUENTA\n");
+            printf("Error: Permiso inválido. Saliendo del programa...\n");
+            retardo2(0.2);
+            permi = CANCELAR; // cierra el programa
             break;
         }
     } while (permi != CANCELAR);
 
     printf("\n¡Hasta luego!\n");
+
     fclose(archivoUsuarios);
     fclose(archivoProductos);
     return 0;

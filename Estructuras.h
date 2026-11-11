@@ -12,6 +12,8 @@
 #define LARGO_LOCALIDAD  40
 #define PERMI_GESTOR 2
 #define PERMI_ADMIN 1
+#define ALICUOTA_IVA_ALIMENTOS_BASICOS 0.105
+#define ALICUOTA_IVA_PROCESADOS 0.21
 #define LARGO_CODIGO 4
 #define LARGO_RESPUESTA 10
 
@@ -83,7 +85,7 @@ typedef struct {
     Fecha         fechaEmision;
     int           codigoCliente;   /* FK -> Cliente.codigo */
     Persona       clienteSnapshot; /* copia histórica del cliente */
-    float         netoGravado;     /* TGNG = suma de subtotalLinea yo lo llamo Total Genral Neto Gravrado */
+    float         netoGravado;     /* TGNG = suma de subtotalLinea yo lo llamo Total Genral Neto Gravado */
     float         alicuotaIVA;     /* 0.21, 0.105, 0.27, 0.0 */
     float         importeIVA;      /* netoGravado * alicuotaIVA */
     float         totalFactura;    /* TGF = netoGravado + importeIVA */
