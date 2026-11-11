@@ -30,6 +30,11 @@
 #define op7 7
 #define ERROR (-1)
 
+// Secciones de MenuUsuario: el retorno es SECCION + opcion (ej: SECC_PRODUCTOS + op2)
+#define SECC_FACTURAS 10
+#define SECC_ESTADISTICAS 20
+#define SECC_PRODUCTOS 30
+
 #define CLAVE_ADMIN "admin123"
 #define MAXIMO_INTENTOS 4
 #define CANCELAR -2
@@ -59,8 +64,8 @@ int registrarUsuario(FILE *archivoUsers);
 int iniciarSesion();
 int LogeoAdmin();
 bool LogeoGestor(FILE *archivoUsuarios);
-void MenuUsuario();
-void MenuAdmin();
+int MenuUsuario();
+int MenuAdmin();
 void AltaGestor(FILE *archivoUsuarios);
 void pantallaCarga();
 void prepararConsola(void);
@@ -405,188 +410,59 @@ int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBa
 // MENÚ GESTOR
 // *********************************************************************************
 
-void MenuUsuario()
+int MenuUsuario()
 {
+    int seccion = 0;
     int op = 0;
+    int resultado = -1; /* -1 = todavía no hay nada que devolver */
     const char *VecMenuPrincipal[] = {"Facturas", "Estadisticas", "Productos", "Salir"};
     const char *vecMenuFacturas[] = {"Generar nueva factura", "Ver listado de facturas", "Eliminar factura de la base de datos", "Ver listado de clientes", "Agregar cliente", "Eliminar cliente", "Modificar cliente", "Volver"};
     const char *vecMenuEstadisticas[] = {"Ver producto estrella", "Ver producto mas vendido", "Ver mejores clientes", "Ver ventas por zona", "Volver"};
     const char *vecMenuProductos[] = {"Ver listado de productos", "Agregar producto nuevo", "Dar de baja un producto", "Volver"};
-
-    utf8();
-    limpiarPantalla();
+// Calcular la cantidad de opciones en cada menú
     int cantOpcionesMenuPrincipal = sizeof(VecMenuPrincipal) / sizeof(VecMenuPrincipal[0]);
     int cantOpcionesFacturas = sizeof(vecMenuFacturas) / sizeof(vecMenuFacturas[0]);
     int cantOpcionesEstadisticas = sizeof(vecMenuEstadisticas) / sizeof(vecMenuEstadisticas[0]);
     int cantOpcionesProductos = sizeof(vecMenuProductos) / sizeof(vecMenuProductos[0]);
-    // Creacion de los archivos
-    FILE *archivoProductos;
-    FILE *archivoEstadisticas;
+ 
+    utf8();
     prepararConsola();
 
     do
     {
         limpiarPantalla();
-        op = elegirOpcion("Menu Gestor", VecMenuPrincipal, cantOpcionesMenuPrincipal);
+        seccion = elegirOpcion("Menu Gestor", VecMenuPrincipal, cantOpcionesMenuPrincipal);
 
-        switch (op)
+        switch (seccion)
         {
         case op1:
-
-            printf("\n");
-
-            do
+            op = elegirOpcion("SECCION FACTURAS", vecMenuFacturas, cantOpcionesFacturas);
+            if (op != cantOpcionesFacturas) //validacion por si se selecciona la opcion de volver, que no haga nada y vuelva al menu principal
             {
-                op = elegirOpcion("SECCION FACTURAS", vecMenuFacturas, cantOpcionesFacturas);
-                switch (op)
-                {
-                case op1:
-                    printf("CREAR FUNCION GENERAR NUEVA FACTURA");
-            
-                    break;
-                case op2:
-                    printf("CREAR FUNCION VER LISTADO DE FACTURAS");
-               
-                    break;
-                case op3:
-                    printf("CREAR FUNCION ELIMINAR FACTURA DE LA BD");
-                
-                    break;
-                case op4:
-                    printf("CREAR FUNCION VER LISTADO DE CLIENTES");
-                    break;
-                case op5:
-                    printf("CREAR FUNCION AGREGAR CLIENTE");
-                    break;
-                case op6:
-                    printf("CREAR FUNCION ELIMINAR CLIENTE");
-                    break;
-                case op7:
-                    printf("CREAR FUNCION MODIFICAR CLIENTE");
-                    break;
-                }
-                if (op != cantOpcionesFacturas)
-                    pausa();
-            } while (op != cantOpcionesFacturas);
-            break;
-
-        case op2:
-            if ((archivoProductos = fopen("bd_Products.dat", "rb+")) == NULL)
-            {
-                archivoProductos = fopen("bd_Products.dat", "wb+");
+                resultado = SECC_FACTURAS + op;
             }
-
-            do
+            break;
+        case op2:
+            op = elegirOpcion("SECCION ESTADISTICAS", vecMenuEstadisticas, cantOpcionesEstadisticas);
+            if (op != cantOpcionesEstadisticas)
             {
-                rewind(archivoProductos);
-                op = elegirOpcion("SECCION ESTADISTICAS", vecMenuEstadisticas, cantOpcionesEstadisticas);
-                switch (op)
-                {
-                case op1:
-                    printf("Desarrollar ver producto estrella\n");
-                    break;
-                case op2:
-                    printf("Desarrollar ver producto mas vendido\n");
-                    break;
-                case op3:
-                    printf("Desarrollar ver mejores clientes SEGUN CRITERIO MENSAJE LUANA EN EL GRUPO\n");
-                    break;
-                case op4:
-                    printf("Desarrollar ver ventas por zona");
-                    break;
-                }
-                fclose(archivoProductos);
-                break;
-                if (op != cantOpcionesEstadisticas)
-                    pausa();
-            } while (op != cantOpcionesEstadisticas);
+                resultado = SECC_ESTADISTICAS + op;
+            }
             break;
         case op3:
-
-            if ((archivoProductos = fopen("bd_Products.dat", "rb+")) == NULL)
+            op = elegirOpcion("SECCION PRODUCTOS", vecMenuProductos, cantOpcionesProductos);
+            if (op != cantOpcionesProductos)
             {
-                archivoProductos = fopen("bd_Products.dat", "wb+");
+                resultado = SECC_PRODUCTOS + op;
             }
-
-            do
-            {
-                rewind(archivoProductos);
-                op = elegirOpcion("SECCION PRODUCTOS", vecMenuProductos, cantOpcionesProductos);
-                switch (op)
-
-                {
-                case op1:
-
-                    verListadoDeProductos(archivoProductos);
-                    
-                    break;
-                case op2:
-                    printf("**********Registrar Producto**********\n\n");
-
-                    int resultado = registrarProducto(archivoProductos);
-
-                    if (resultado == EXISTE_BD)
-                    {
-                        printf("Producto ya existente, reintente\n");
-                    }
-                    else if (resultado == SALIDA)
-                    {
-                        printf("No se registro el Prodcuto (cancelado)");
-                    }
-                    else
-                    {
-                        printf("\n¡Registro exitoso!\n");
-                    }
-
-                    pausa();
-                    break;
-                case op3:
-                    printf("**********Dar de baja un Producto**********\n\n");
-                    int codigo = 0;
-                    int posicionRegistro = 0;
-                    Articulo product;
-                    leerEntero("Ingrese el codigo del articulo que quiere dar de baja (-1 para salir)", &codigo);
-                    if (codigo == SALIDA)
-                    {
-                        printf("No se hizo la baja  (cancelado)\n");
-                    }
-                    posicionRegistro = buscarPosicionRegistroProductos(archivoProductos, codigo);
-                    if (posicionRegistro == NO_ENCONTRADO)
-                    {
-                        printf("No se ha encontrado el producto\n");
-                    }
-                    else
-                    {
-
-                        fseek(archivoProductos, posicionRegistro * sizeof(Articulo), SEEK_SET);
-                        fread(&product, sizeof(Articulo), 1, archivoProductos);
-                        product.estado = INACTIVO; // se trabaja una BAJA LOGICA, no estamos borrando por completo el registro ya que no hay manera de deshacerlo. la buena practica es desactivar registros, no eliminarlos por completo
-                        fseek(archivoProductos, posicionRegistro * sizeof(Articulo), SEEK_SET);
-                        fwrite(&product, sizeof(Articulo), 1, archivoProductos);
-                        fflush(archivoProductos);
-
-                        printf("Producto desactivado correctamente\n");
-                    }
-                    break;
-                default:
-                    printf("Error: Fuera de rango. Reintente.\n");
-                    break;
-                }
-
-                fclose(archivoProductos);
-                break;
-                if (op != cantOpcionesProductos)
-                {
-                    pausa();
-                }
-
-            } while (op != cantOpcionesProductos);
+            break;
+        default:
+            resultado = SALIR;
+            break;
         }
-        if (op != cantOpcionesMenuPrincipal)
-        {
-            pausa();
-        }
-    } while (op != cantOpcionesMenuPrincipal);
+    } while (resultado == -1);
+
+    return resultado;
 }
 // *********************************************************************************
 // Alta Gestor
@@ -613,7 +489,6 @@ void AltaGestor(FILE *archivoUsuarios)
         printf("\n¡Registro exitoso!\n");
     }
 
-    pausa();
 }
 
 // BAJA GESTOR: baja logica.
@@ -655,45 +530,16 @@ void BajaGestor(FILE *archivoUsuarios)
 // *********************************************************************************
 // MENÚ ADMIN
 // *********************************************************************************
-void MenuAdmin()
+int MenuAdmin()
 {
-    FILE *archivoUsuarios;
-    if ((archivoUsuarios = fopen("bd_Users.dat", "rb+")) == NULL) // creacion y apertura del archivo de usuarios. Si existe, lo abre y utiliza, si no existe, lo crea y utiliza
-    {
-        archivoUsuarios = fopen("bd_Users.dat", "wb+");
-    }
-
-    int op = 0;
     const char *menu[] = {"Dar de alta a un gestor\n",
                           "Dar de baja a un gestor\n",
                           "Salir"};
     int cant = sizeof(menu) / sizeof(menu[0]);
     prepararConsola();
 
-    do
-    {
-
-        op = elegirOpcion("Menu Administrador", menu, cant);
-
-        switch (op)
-        {
-        case op1:
-            limpiarPantalla();
-            AltaGestor(archivoUsuarios);
-
-            break;
-        case op2:
-            limpiarPantalla();
-            BajaGestor(archivoUsuarios);
-
-            break;
-        }
-        if (op != cant)
-            pausa();
-    } while (op != cant);
-    fclose(archivoUsuarios);
+    return elegirOpcion("Menu Administrador", menu, cant);
 }
-
 // *********************************************************************************
 // LOGUEO ADMIN
 // Devuelve CANCELAR si se agotaron los intentos (cierra el programa),
@@ -718,8 +564,7 @@ int LogeoAdmin()
         if (strcmp(clave, CLAVE_ADMIN) == 0)
         {
             limpiarPantalla();
-            MenuAdmin();
-            return 0;
+            return EXITO;
         }
 
         intentos--;
@@ -739,6 +584,7 @@ int contarRegistrosUsuarios(FILE *archivoUsers)
 {
     int cantidad = 0;
     Usuario user;
+    rewind(archivoUsers);
     while (fread(&user, sizeof(Usuario), 1, archivoUsers))
     {
         cantidad++;
