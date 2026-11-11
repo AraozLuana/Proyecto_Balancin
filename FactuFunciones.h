@@ -436,6 +436,7 @@ void MenuUsuario()
     int cantOpcionesProductos = sizeof(vecMenuProductos) / sizeof(vecMenuProductos[0]);
     // Creacion de los archivos
     FILE *archivoProductos;
+    FILE *archivoEstadisticas;
     prepararConsola();
 
     do
@@ -505,14 +506,10 @@ void MenuUsuario()
                             }
                         }
 
-                        if (ferror(archivoFacturas))
-                        {
-                            printf("No se pudo leer el archivo de facturas.\n");
-                        }
-                        else if (generarFactura(siguienteNroFactura, &facturaActual, detallesFactura,
-                                                MAX_DETALLES_FACTURA, &cantidadDetallesFactura,
-                                                &cantidadFacturas, archivoFacturas, archivoProductos, archivoDetalles,
-                                                archivoClientes))
+                        if (generarFactura(siguienteNroFactura, &facturaActual, detallesFactura,
+                                           MAX_DETALLES_FACTURA, &cantidadDetallesFactura,
+                                           &cantidadFacturas, archivoFacturas, archivoProductos, archivoDetalles,
+                                           archivoClientes))
                         {
                             printf("\nFactura guardada correctamente.\n");
                         }
@@ -613,9 +610,14 @@ void MenuUsuario()
             break;
 
         case op2:
+            if ((archivoProductos = fopen("bd_Products.dat", "rb+")) == NULL)
+            {
+                archivoProductos = fopen("bd_Products.dat", "wb+");
+            }
 
             do
             {
+                rewind(archivoProductos);
                 op = elegirOpcion("SECCION ESTADISTICAS", vecMenuEstadisticas, cantOpcionesEstadisticas);
                 switch (op)
                 {
@@ -635,6 +637,7 @@ void MenuUsuario()
                 if (op != cantOpcionesEstadisticas)
                     pausa();
             } while (op != cantOpcionesEstadisticas);
+            fclose(archivoProductos);
             break;
         case op3:
 
@@ -653,7 +656,7 @@ void MenuUsuario()
                 case op1:
 
                     verListadoDeProductos(archivoProductos);
-                    pausa();
+                    
                     break;
                 case op2:
                     printf("**********Registrar Producto**********\n\n");
@@ -708,14 +711,13 @@ void MenuUsuario()
                     break;
                 }
 
-                fclose(archivoProductos);
-                break;
                 if (op != cantOpcionesProductos)
                 {
                     pausa();
                 }
 
             } while (op != cantOpcionesProductos);
+            fclose(archivoProductos);
         }
         if (op != cantOpcionesMenuPrincipal)
         {
@@ -1010,20 +1012,13 @@ bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[],
                 }
 
                 rewind(archivoClientes);
-                while (fread(&clienteEncontrado, sizeof(Cliente), 1, archivoClientes) == 1)
+                while (!clienteValido && fread(&clienteEncontrado, sizeof(Cliente), 1, archivoClientes) == 1)
                 {
                     if (clienteEncontrado.codigo == nuevaFactura.codigoCliente &&
                         clienteEncontrado.activo == ACTIVO)
                     {
                         clienteValido = true;
-                        break;
                     }
-                }
-
-                if (ferror(archivoClientes))
-                {
-                    printf("No se pudo leer el archivo de clientes.\n");
-                    return false;
                 }
 
                 if (!clienteValido)
@@ -1078,19 +1073,12 @@ bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[],
                         bool productoEncontrado = false;
 
                         rewind(archivoProductos);
-                        while (fread(&producto, sizeof(Articulo), 1, archivoProductos) == 1)
+                        while (!productoEncontrado && fread(&producto, sizeof(Articulo), 1, archivoProductos) == 1)
                         {
                             if (producto.codigo == codigoIngresado)
                             {
                                 productoEncontrado = true;
-                                break;
                             }
-                        }
-
-                        if (ferror(archivoProductos))
-                        {
-                            printf("No se pudo leer el archivo de productos.\n");
-                            return false;
                         }
 
                         if (!productoEncontrado)
@@ -1100,7 +1088,10 @@ bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[],
                         }
                         else
                         {
-                            memcpy(detalle.descripcion, producto.descripcion, sizeof(detalle.descripcion));
+                            for (int i = 0; i < LARGO_DESC - 1; i++)
+                            {
+                                detalle.descripcion[i] = producto.descripcion[i];
+                            }
                             detalle.descripcion[sizeof(detalle.descripcion) - 1] = '\0';
                             detalle.precioUnitario = producto.precio;
 
@@ -1206,21 +1197,12 @@ void verListadoFacturas(FILE *archivoFacturas, FILE *archivoDetalles)
                            detalle.precioUnitario, detalle.cantidad, detalle.subtotalLinea);
                 }
             }
-            if (ferror(archivoDetalles))
-            {
-                printf("Error al leer el archivo de detalles de facturas.\n");
-                return;
-            }
         }
 
         printf("Total de la factura: $%.2f\n", factura.totalFactura);
     }
 
-    if (ferror(archivoFacturas))
-    {
-        printf("Error al leer el archivo de facturas.\n");
-    }
-    else if (cantidadFacturas == 0)
+    if (cantidadFacturas == 0)
     {
         printf("No hay facturas para mostrar.\n");
     }
@@ -1239,12 +1221,11 @@ void eliminarFactura(FILE *archivoFacturas, FILE *archivoDetalles, int nroFactur
     }
 
     rewind(archivoFacturas);
-    while (fread(&factura, sizeof(Factura), 1, archivoFacturas) == 1)
+    while (!facturaEncontrada && fread(&factura, sizeof(Factura), 1, archivoFacturas) == 1)
     {
         if (factura.nroFactura == nroFactura)
         {
             facturaEncontrada = true;
-            break;
         }
     }
 
