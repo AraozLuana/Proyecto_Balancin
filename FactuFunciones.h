@@ -874,6 +874,7 @@ int LogeoAdmin()
     retardo2(0.2);
     return CANCELAR;
 }
+
 int contarRegistrosUsuarios(FILE *archivoUsers)
 {
     int cantidad = 0;
