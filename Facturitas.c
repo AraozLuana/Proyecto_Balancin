@@ -1,6 +1,4 @@
 #include <stdio.h>
-#include <string.h>
-
 #include "utiles_Proyecto.h"
 #include "FactuFunciones.h" // esta tiene incluido "Estructuras.h" y define CANCELAR
 
@@ -41,7 +39,8 @@ int main()
             {
                 limpiarPantalla();
                 printf("----Bienvenide a Balancin----\n");
-                MenuUsuario();
+                MenuUsuario(); // Llamada al menú de usuario con productos y detalles vacíos
+                //(Hay que agregar los archivos de los productos y facturas para que funcionen las stas)
             }
             break;
 
@@ -49,12 +48,15 @@ int main()
             break;
 
         default:
-            printf("ERROR DE CUENTA\n");
+            printf("Error: Permiso inválido. Saliendo del programa...\n");
+            retardo2(0.2);
+            permi = CANCELAR; // cierra el programa
             break;
         }
     } while (permi != CANCELAR);
 
     printf("\n¡Hasta luego!\n");
+
     fclose(archivoUsuarios);
     return 0;
 }
