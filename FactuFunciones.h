@@ -1317,6 +1317,7 @@ void verListadoUsuarios(FILE *archivoUsers)
     printf("==============================================================\n");
     printf("%-22s %-10s %-8s\n", "USUARIO", "ROL", "ESTADO");
     printf("--------------------------------------------------------------\n");
+    rewind(archivoUsers);
 
     while (fread(&user, sizeof(Usuario), 1, archivoUsers) == 1) // mientras haya registros
     {
