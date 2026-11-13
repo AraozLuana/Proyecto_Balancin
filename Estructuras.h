@@ -1,108 +1,121 @@
 #ifndef ESTRUCTURAS_H
 #define ESTRUCTURAS_H
- 
+
 /* ============================================================
-*  TAMAÑOS DE CAMPOS DE TEXTO
-* ============================================================ */
+ *  TAMAÑOS DE CAMPOS DE TEXTO
+ * ============================================================ */
 #define MAX_USUARIOS 50
-#define LARGO_USUARIO   30
-#define LARGO_CLAVE     30
-#define LARGO_NOMBRE    60
-#define LARGO_DESC      80
-#define LARGO_LOCALIDAD  40
+#define LARGO_USUARIO 30
+#define LARGO_CLAVE 30
+#define LARGO_DESC 80
+#define LARGO_LOCALIDAD 40
 #define PERMI_GESTOR 2
 #define PERMI_ADMIN 1
 #define ALICUOTA_IVA_ALIMENTOS_BASICOS 0.105
 #define ALICUOTA_IVA_PROCESADOS 0.21
 #define LARGO_CODIGO 4
 #define LARGO_RESPUESTA 10
+#define LARGO_NOMBREYAPELLIDO 100
 
- 
 /* ============================================================
-*  USUARIO
-* ============================================================ */
-typedef struct {
-    char       nombreUsuario[LARGO_USUARIO];  /* PK lógica, única */
-    char       claveHash[LARGO_CLAVE];        /* hash, NUNCA texto plano */
-    int        activo;                        /* 1 = activo, 0 = baja */
-    int rol_usuario;                           /*1 = ADMIN, 2 = GESTOR*/ 
+ *  USUARIO
+ * ============================================================ */
+typedef struct
+{
+    char nombreUsuario[LARGO_USUARIO]; /* PK lógica, única */
+    char claveHash[LARGO_CLAVE];       /* hash, NUNCA texto plano */
+    int activo;                        /* 1 = activo, 0 = baja */
+    int rol_usuario;                   /*1 = ADMIN, 2 = GESTOR*/
 } Usuario;
- 
+
+typedef enum
+{
+    DETALLE_ACTIVO = 1,
+    DETALLE_ELIMINADO = 0
+} EstadoDetalle;
 /* ============================================================
-*  PERSONA (reutilizable: cliente, snapshot en factura, etc.)
-* ============================================================ */
-typedef struct {
-    char  nombreYApellido[LARGO_NOMBRE];
-    int   numeroDNI;
-    char  localidad[LARGO_LOCALIDAD];
+ *  PERSONA (reutilizable: cliente, snapshot en factura, etc.)
+ * ============================================================ */
+typedef struct
+{
+    char nombreYApellido[LARGO_NOMBREYAPELLIDO];
+    int numeroDNI;
+    char localidad[LARGO_LOCALIDAD];
 } Persona;
 
 /* ============================================================
-*  CLIENTE
-* ============================================================ */
-typedef struct {
-    int      codigo;          /* PK, único, > 0 */
-    Persona  datos;
-    int      activo;          /* 1 = activo, 0 = baja lógica */
-    float    saldo;
+ *  CLIENTE
+ * ============================================================ */
+typedef struct
+{
+    int codigo; /* PK, único, > 0 */
+    Persona datos;
+    int activo; /* 1 = activo, 0 = baja lógica */
+    float saldo;
 } Cliente;
- 
+
 /* ============================================================
-*  ARTÍCULO
-* ============================================================ */
-typedef struct {
-    int   codigo;             /* PK */
-    char  descripcion[LARGO_DESC];
-    float precio;             /* NETO, sin IVA */
-    int   stock;
-    int   estado;             /* 1 = activo, 0 = dado de baja */
-    int cantVendida;             
+ *  ARTÍCULO
+ * ============================================================ */
+typedef struct
+{
+    int codigo; /* PK */
+    char descripcion[LARGO_DESC];
+    float precio; /* NETO, sin IVA */
+    int stock;
+    int estado; /* 1 = activo, 0 = dado de baja */
+    int cantVendida;
 } Articulo;
- 
+
 /* ============================================================
-*  FECHA
-* ============================================================ */
-typedef struct {
+ *  FECHA
+ * ============================================================ */
+typedef struct
+{
     int dia;
     int mes;
     int anio;
 } Fecha;
- 
+
 /* ============================================================
-*  ESTADO DE FACTURA
-* ============================================================ */
-typedef enum {
+ *  ESTADO DE FACTURA
+ * ============================================================ */
+typedef enum
+{
     FACTURA_EMITIDA = 0,
-    FACTURA_PAGADA  = 1,
+    FACTURA_PAGADA = 1,
     FACTURA_ANULADA = 2
 } EstadoFactura;
- 
+
 /* ============================================================
-*  CABECERA DE FACTURA       ->  facturas.dat
-* ============================================================ */
-typedef struct {
-    int           nroFactura;      /* PK, único y correlativo  cuando hablo de PK es Primrary Key o clave Primaria*/
-    Fecha         fechaEmision;
-    int           codigoCliente;   /* FK -> Cliente.codigo */
-    Persona       clienteSnapshot; /* copia histórica del cliente */
-    float         netoGravado;     /* TGNG = suma de subtotalLinea yo lo llamo Total Genral Neto Gravado */
-    float         alicuotaIVA;     /* 0.21, 0.105, 0.27, 0.0 */
-    float         importeIVA;      /* netoGravado * alicuotaIVA */
-    float         totalFactura;    /* TGF = netoGravado + importeIVA */
+ *  CABECERA DE FACTURA       ->  facturas.dat
+ * ============================================================ */
+typedef struct
+{
+    int nroFactura; /* PK, único y correlativo  cuando hablo de PK es Primrary Key o clave Primaria*/
+    Fecha fechaEmision;
+    int codigoCliente;       /* FK -> Cliente.codigo */
+    Persona clienteSnapshot; /* copia histórica del cliente */
+    float netoGravado;       /* TGNG = suma de subtotalLinea yo lo llamo Total Genral Neto Gravado */
+    float alicuotaIVA;       /* 0.21, 0.105, 0.27, 0.0 */
+    float importeIVA;        /* netoGravado * alicuotaIVA */
+    float totalFactura;      /* TGF = netoGravado + importeIVA */
     EstadoFactura estado;
 } Factura;
- 
+
 /* ============================================================
-*  LÍNEA DE DETALLE          ->  detalle.dat
-*  (una por cada ítem facturado, agrupadas por nroFactura)
-* ============================================================ */
-typedef struct {
-    int   nroFactura;              /* FK -> Factura.nroFactura el FK es una clave Foranea, que significa, que es primaria en otra tabla*/
-    int   codigoArticulo;          /* FK -> Articulo.codigo */
-    char  descripcion[LARGO_DESC]; /* snapshot o foto del nombre */
-    int   cantidad;
-    float precioUnitario;          /* snapshot, neto */
-    float subtotalLinea;           /* cantidad * precioUnitario */
+ *  LÍNEA DE DETALLE          ->  detalle.dat
+ *  (una por cada ítem facturado, agrupadas por nroFactura)
+ * ============================================================ */
+typedef struct
+{
+    int nroFactura;               /* FK -> Factura.nroFactura el FK es una clave Foranea, que significa, que es primaria en otra tabla*/
+    int codigoArticulo;           /* FK -> Articulo.codigo */
+    char descripcion[LARGO_DESC]; /* snapshot o foto del nombre */
+    int cantidad;
+    float precioUnitario; /* snapshot, neto */
+    float subtotalLinea; /* cantidad * precioUnitario */
+    EstadoDetalle estado; /* 1 = activo 0 = baja logica*/
 } DetalleFactura;
- 
+
 #endif /*ESTRUCTURAS_H*/
