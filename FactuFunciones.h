@@ -52,14 +52,14 @@
 // Resultados de ambas funciones de registrar
 #define EXITO 1
 #define EXISTE_BD 2
-#define SALIDA -2
+#define SALIDA -1
 
 // *********************************************************************************
 // PROTOTIPOS
 // *********************************************************************************
+// Funciones de LOGIN
 int buscarPosicionRegistroUsuario(FILE *archivoUsuario, char *nombre_usuario_baja);
 int validarLogin(FILE *archivoUsuarios, char *nombreUsuario, char *clave);
-int registrarUsuario(FILE *archivoUsers);
 int iniciarSesion();
 int LogeoAdmin();
 bool LogeoGestor(FILE *archivoUsuarios);
@@ -70,6 +70,7 @@ void MenuAdmin();
 //**********************************************************************************
 // FUNCIONES VARIAS
 void AltaGestor(FILE *archivoUsuarios);
+int registrarUsuario(FILE *archivoUsers);
 void pantallaCarga();
 void prepararConsola(void);
 void mostrarMenu(const char *titulo, const char *opciones[], int cant, int sel);
@@ -77,18 +78,19 @@ int contarRegistrosUsuarios(FILE *archivoUsers);
 int elegirOpcion(const char *titulo, const char *opciones[], int cant);
 void verListadoDeProductos(FILE *archivoProductos);
 int registrarProducto(FILE *archivoProducts);
+int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBaja);
+int bajaProducto(FILE *archivoProductos);
 bool generarFactura(int nroFactura, Factura *factura, DetalleFactura detalles[], int capacidadDetalles, int *cantidadDetalles,
                     int *cantidadFacturas, FILE *archivoFacturas, FILE *archivoProductos, FILE *archivoDetalles,
                     FILE *archivoClientes);
 void verListadoFacturas(FILE *archivoFacturas, FILE *archivoDetalles);
 void eliminarFactura(FILE *archivoFacturas, FILE *archivoDetalles, FILE *archivoProductos, int nroFactura);
-int registrarProducto(FILE *archivoProducts);
-int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBaja);
 void BajaGestor(FILE *archivoUsuarios);
 void verListadoUsuarios(FILE *archivoUsers);
-int buscarPosicionRegistroClientes(FILE *archivoClientes, int codigoClienteBaja);
+int buscarPosicionRegistroCliente(FILE *archivoClientes, int dniClienteBaja);
 void verListadoClientes(FILE *archivoClientes);
 int registrarCliente(FILE *archivoCliente);
+int bajaCliente(FILE *archivoClientes);
 void mostrar_pose1();
 void mostrar_pose2();
 
@@ -561,10 +563,6 @@ int registrarUsuario(FILE *archivoUsers)
     Usuario busqueda;
     char respuesta[LARGO_RESPUESTA];
     int posicion = 0;
-    int i;
-
-    user.activo = ACTIVO;
-    user.rol_usuario = PERMI_GESTOR;
 
     leerCadena(user.nombreUsuario, LARGO_USUARIO, "Nombre de gestor (-1 para salir): ");
     while (user.nombreUsuario[0] == '\0')
@@ -599,7 +597,7 @@ int registrarUsuario(FILE *archivoUsers)
             }
 
             leerCadena(respuesta, LARGO_RESPUESTA, "Este usuario esta desactivado. Desea activarlo [SI/NO]? ");
-            for (i = 0; respuesta[i] != '\0'; i++)
+            for (int i = 0; respuesta[i] != '\0'; i++)
             {
                 respuesta[i] = toupper(respuesta[i]);
             }
@@ -616,7 +614,8 @@ int registrarUsuario(FILE *archivoUsers)
         }
         posicion++;
     }
-
+    user.activo = ACTIVO;
+    user.rol_usuario = PERMI_GESTOR;
     fseek(archivoUsers, 0L, SEEK_END);
     fwrite(&user, sizeof(Usuario), 1, archivoUsers);
     fflush(archivoUsers);
@@ -680,8 +679,10 @@ int registrarProducto(FILE *archivoProducts)
 {
     Articulo product;
     Articulo busqueda;
-    product.estado = ACTIVO;
 
+    int posicion = 0;
+    char respuesta[LARGO_RESPUESTA];
+    rewind(archivoProducts);
     leerEntero("Ingrese el codigo del producto que desea agregar (-1 para salir)", &product.codigo);
     while (product.codigo == 0 && product.codigo < SALIDA)
     {
@@ -691,7 +692,35 @@ int registrarProducto(FILE *archivoProducts)
     {
         return SALIDA;
     }
+    while (fread(&busqueda, sizeof(Articulo), 1, archivoProducts))
+    {
+        if (busqueda.codigo == product.codigo)
+        {
+            if (busqueda.estado == ACTIVO)
+            {
+                return EXISTE_BD;
+            }
+            else // por si el producto estaba descativado
+            {
+                leerCadena(respuesta, LARGO_RESPUESTA, "Este producto esta desactivado. Desea activarlo [SI/NO]? ");
+                for (int i = 0; respuesta[i] != '\0'; i++)
+                {
+                    respuesta[i] = toupper(respuesta[i]);
+                }
+                if (strcmp(respuesta, "SI") == 0 || strcmp(respuesta, "S") == 0)
+                {
 
+                    busqueda.estado = ACTIVO;
+                    fseek(archivoProducts, (long)posicion * sizeof(Articulo), SEEK_SET);
+                    fwrite(&busqueda, sizeof(Articulo), 1, archivoProducts);
+                    return EXITO;
+                }
+                return SALIDA;
+            }
+        }
+        posicion++;
+    }
+    // producto nuevo
     leerCadena(product.descripcion, LARGO_USUARIO, "Descripcion del producto (-1 para salir): ");
     while (product.descripcion[0] == '\0')
     {
@@ -703,52 +732,37 @@ int registrarProducto(FILE *archivoProducts)
         return SALIDA;
     }
     leerEntero("Ingrese la cantidad de stock disponible de este producto (-1) para salir: ", &product.stock);
-    while (product.codigo < SALIDA)
+    while (product.stock < SALIDA)
     {
-        leerEntero("El stock no pued eser  negativo.Ingrese la cantidad de stock disponible de este producto(-1 para salir)", &product.stock);
+        leerEntero("El stock no puede ser  negativo.Ingrese la cantidad de stock disponible de este producto(-1 para salir)", &product.stock);
     }
     if (product.stock == SALIDA)
     {
         return SALIDA;
     }
     leerFlotante("Ingrese el precio unitario de este producto (-1) para salir: ", &product.precio);
-    while (product.codigo < SALIDA && product.precio == 0)
+    while (product.precio < SALIDA || product.precio == 0)
     {
-        leerEntero("El precio no puede ser ni 0 ni  negativo.Ingrese el precio unitario de este producto (-1 para salir)", &product.precio);
+        leerFlotante("El precio no puede ser ni 0 ni  negativo.Ingrese el precio unitario de este producto (-1 para salir)", &product.precio);
     }
 
     if (product.precio == SALIDA)
     {
         return SALIDA;
     }
-    leerEntero("Ingrese la cantidad vendida de este producto (-1) para salir: ", &product.cantVendida);
-    while (product.cantVendida < SALIDA)
-    {
-        leerEntero("La cantidad vendida no puede ser negativa. Ingrese la cantidad vendida de este producto (-1) para salir: ", &product.cantVendida);
-    }
 
-    if (product.cantVendida == SALIDA)
-    {
-        return SALIDA;
-    }
-
-    while (fread(&busqueda, sizeof(Articulo), 1, archivoProducts)) // fread retorna 1 si esta bien, mientras que exista. cuando no haya mas que sea endoffile, termina (porque sería 0)
-    {
-        if (busqueda.codigo == product.codigo)
-        {
-            return EXISTE_BD;
-        }
-    }
-    // fwrite(&product, sizeof(Articulo), 1, archivoProducts);
-
-    return fwrite(&product, sizeof(Articulo), 1, archivoProducts);
-    ;
+    product.estado = ACTIVO;
+    product.cantVendida = 0;
+    fseek(archivoProducts, 0L, SEEK_END);
+    fwrite(&product, sizeof(Articulo), 1, archivoProducts);
+    return EXITO;
 }
 
 int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBaja)
 {
     Articulo product;
     int posicion = 0;
+    rewind(archivoProductos);
     while (fread(&product, sizeof(Articulo), 1, archivoProductos)) // fread retorna 1 si esta bien, mientras que exista. cuando no haya mas que sea endoffile, termina (porque sería 0)
     {
 
@@ -763,20 +777,21 @@ int buscarPosicionRegistroProductos(FILE *archivoProductos, int codigoProductoBa
         return NO_ENCONTRADO;
     }
 }
-int buscarPosicionRegistroCliente(FILE *archivoClientes, int codigoClienteBaja)
+int buscarPosicionRegistroCliente(FILE *archivoClientes, int dniClienteBaja)
 {
     Cliente client;
     int posicion = 0;
+    rewind(archivoClientes);
     while (fread(&client, sizeof(Cliente), 1, archivoClientes)) // fread retorna 1 si esta bien, mientras que exista. cuando no haya mas que sea endoffile, termina (porque sería 0)
     {
 
-        if (client.codigo == codigoClienteBaja)
+        if (client.datos.numeroDNI == dniClienteBaja)
         {
             return posicion;
         }
         posicion++;
     }
-    if (client.codigo != codigoClienteBaja)
+    if (client.datos.numeroDNI != dniClienteBaja)
     {
         return NO_ENCONTRADO;
     }
@@ -813,20 +828,6 @@ int registrarCliente(FILE *archivoCliente)
     Cliente busqueda;
     char respuesta[LARGO_RESPUESTA];
     int posicion = 0;
-    int i;
-
-    client.activo = ACTIVO;
-
-    leerCadena(client.datos.nombreYApellido, LARGO_NOMBREYAPELLIDO, "Nombre y apellido del cliente (-1 para salir): ");
-    while (client.datos.nombreYApellido[0] == '\0')
-    {
-        printf("El nombre y apellido  no puede estar vacío.\n");
-        leerCadena(client.datos.nombreYApellido, LARGO_NOMBREYAPELLIDO, "Nombre y apellido del cliente (-1 para salir): ");
-    }
-    if (strcmp(client.datos.nombreYApellido, "-1") == 0)
-    {
-        return SALIDA;
-    }
     leerEntero("Ingrese el DNI del cliente a registrar (-1 para salir)", &client.datos.numeroDNI);
     while (client.datos.numeroDNI == 0)
     {
@@ -837,8 +838,45 @@ int registrarCliente(FILE *archivoCliente)
     {
         return SALIDA;
     }
+    rewind(archivoCliente);
+    while (fread(&busqueda, sizeof(Cliente), 1, archivoCliente) == 1)
+    {
+        if (busqueda.datos.numeroDNI == client.datos.numeroDNI)
+        {
+            if (busqueda.activo == ACTIVO)
+            {
+                return EXISTE_BD;
+            }
+
+            leerCadena(respuesta, LARGO_RESPUESTA, "Este cliente esta desactivado. Desea activarlo [SI/NO]? ");
+            for (int i = 0; respuesta[i] != '\0'; i++)
+            {
+                respuesta[i] = toupper(respuesta[i]);
+            }
+            if (strcmp(respuesta, "SI") == 0 || strcmp(respuesta, "S") == 0)
+            {
+                busqueda.activo = ACTIVO;
+                fseek(archivoCliente, (long)posicion * sizeof(Cliente), SEEK_SET);
+                fwrite(&busqueda, sizeof(Cliente), 1, archivoCliente);
+                return EXITO;
+            }
+            return SALIDA;
+        }
+        posicion++;
+    }
+    leerCadena(client.datos.nombreYApellido, LARGO_NOMBREYAPELLIDO, "Nombre y apellido del cliente (-1 para salir): ");
+    while (client.datos.nombreYApellido[0] == '\0')
+    {
+        printf("El nombre y apellido  no puede estar vacío.\n");
+        leerCadena(client.datos.nombreYApellido, LARGO_NOMBREYAPELLIDO, "Nombre y apellido del cliente (-1 para salir): ");
+    }
+    if (strcmp(client.datos.nombreYApellido, "-1") == 0)
+    {
+        return SALIDA;
+    }
+
     leerEntero("Ingrese el codigo cliente a registrar (-1 para salir)", &client.codigo);
-    while (client.codigo == 0)
+    while (client.codigo == 0 || client.codigo < SALIDA)
     {
         printf("El codigo del cliente no puede ser 0  no puede estar vacío.\n");
         leerEntero("Ingrese el codigo cliente a registrar (-1 para salir)", &client.codigo);
@@ -848,38 +886,68 @@ int registrarCliente(FILE *archivoCliente)
         return SALIDA;
     }
 
-    rewind(archivoCliente);
-    while (fread(&busqueda, sizeof(Cliente), 1, archivoCliente) == 1)
-    {
-        if (busqueda.codigo == client.codigo)
-        {
-            if (busqueda.activo == ACTIVO)
-            {
-                return EXISTE_BD;
-            }
-
-            leerCadena(respuesta, LARGO_RESPUESTA, "Este cliente esta desactivado. Desea activarlo [SI/NO]? ");
-            for (i = 0; respuesta[i] != '\0'; i++)
-            {
-                respuesta[i] = toupper((unsigned char)respuesta[i]);
-            }
-            if (strcmp(respuesta, "SI") == 0 || strcmp(respuesta, "S") == 0)
-            {
-                busqueda.activo = ACTIVO;
-
-                fseek(archivoCliente, (long)posicion * sizeof(Cliente), SEEK_SET);
-                fwrite(&busqueda, sizeof(Cliente), 1, archivoCliente);
-                return EXITO;
-            }
-            return SALIDA;
-        }
-        posicion++;
-    }
-
+    client.activo = ACTIVO;
     fseek(archivoCliente, 0L, SEEK_END);
     fwrite(&client, sizeof(Cliente), 1, archivoCliente);
     fflush(archivoCliente);
     return EXITO;
+}
+int bajaProducto(FILE *archivoProductos)
+{
+    int codigo = 0;
+    int posicionRegistro = 0;
+    Articulo product;
+    leerEntero("Ingrese el codigo del articulo que quiere dar de baja (-1 para salir)", &codigo);
+    if (codigo == SALIDA)
+    {
+        return SALIDA;
+    }
+    posicionRegistro = buscarPosicionRegistroProductos(archivoProductos, codigo);
+    if (posicionRegistro == NO_ENCONTRADO)
+    {
+        return NO_ENCONTRADO;
+    }
+    else
+    {
+
+        fseek(archivoProductos, (long)posicionRegistro * sizeof(Articulo), SEEK_SET);
+        fread(&product, sizeof(Articulo), 1, archivoProductos);
+        product.estado = INACTIVO; // baja lógica
+
+        fseek(archivoProductos, (long)posicionRegistro * sizeof(Articulo), SEEK_SET);
+        fwrite(&product, sizeof(Articulo), 1, archivoProductos);
+        return EXITO;
+    }
+}
+int bajaCliente(FILE *archivoClientes)
+{
+    int dni = 0;
+    int posicionRegistro = 0;
+    Cliente client;
+
+    leerEntero("Ingrese el DNI del cliente que quiere dar de baja (-1 para salir)", &dni);
+    if (dni == SALIDA)
+    {
+        return SALIDA;
+    }
+    posicionRegistro = buscarPosicionRegistroCliente(archivoClientes, dni);
+    if (posicionRegistro == NO_ENCONTRADO)
+    {
+        return NO_ENCONTRADO;
+    }
+    else
+    {
+
+        fseek(archivoClientes, (long)posicionRegistro * sizeof(Cliente), SEEK_SET);
+        fread(&client, sizeof(Cliente), 1, archivoClientes);
+        client.activo = INACTIVO; // baja lógica
+
+        fseek(archivoClientes, (long)posicionRegistro * sizeof(Cliente), SEEK_SET);
+        fwrite(&client, sizeof(Cliente), 1, archivoClientes);
+        fflush(archivoClientes);
+        return EXITO;
+        return EXITO;
+    }
 }
 
 // *********************************************************************************
@@ -943,7 +1011,7 @@ void MenuUsuario()
 
                     if ((archivoDetalles = fopen("bd_Detalles.dat", "rb+")) == NULL)
                     {
-                        archivoDetalles = fopen("bd_Detalles.dat", "Wb+");
+                        archivoDetalles = fopen("bd_Detalles.dat", "wb+");
                     }
 
                     if ((archivoProductos = fopen("bd_Products.dat", "rb+")) == NULL)
@@ -1085,7 +1153,6 @@ void MenuUsuario()
                         printf("\n¡Registro exitoso!\n");
                     }
                     fclose(archivoClientes);
-                    pausa();
                     break;
                 case op6:
                     if ((archivoClientes = fopen("bd_Clients.dat", "rb+")) == NULL)
@@ -1093,28 +1160,20 @@ void MenuUsuario()
                         archivoClientes = fopen("bd_Clients.dat", "wb+");
                     }
                     printf("**********Dar de baja un Cliente**********\n\n");
-                    int codigo = 0;
-                    int posicionRegistro = 0;
-                    Cliente client;
-                    leerEntero("Ingrese el codigo del cliente que quiere dar de baja (-1 para salir)", &codigo);
-                    if (codigo == SALIDA)
+                    int resultadoBajaCliente = bajaCliente(archivoClientes);
+                    if (resultadoBajaCliente == SALIDA)
                     {
-                        printf("No se hizo la baja  (cancelado)\n");
+                        printf("No se hizo la baja (cancelado)\n");
                     }
-                    posicionRegistro = buscarPosicionRegistroCliente(archivoClientes, codigo);
-                    if (posicionRegistro == NO_ENCONTRADO)
+                    else if (resultadoBajaCliente == NO_ENCONTRADO)
                     {
                         printf("No se ha encontrado el cliente\n");
                     }
                     else
                     {
-                        fseek(archivoClientes, posicionRegistro * sizeof(Cliente), SEEK_SET);
-                        fread(&client, sizeof(Cliente), 1, archivoClientes);
-                        client.activo = INACTIVO; // se trabaja una BAJA LOGICA, no estamos borrando por completo el registro ya que no hay manera de deshacerlo. la buena practica es desactivar registros, no eliminarlos por completo
-                        fseek(archivoClientes, posicionRegistro * sizeof(Cliente), SEEK_SET);
-                        fwrite(&client, sizeof(Cliente), 1, archivoClientes);
-                        printf("Cliente desactivado correctamente\n");
+                        printf("Cliente dado de baja correctamente\n");
                     }
+
                     fclose(archivoClientes);
                     break;
                 }
@@ -1194,35 +1253,23 @@ void MenuUsuario()
                         printf("\n¡Registro exitoso!\n");
                     }
 
-                    pausa();
                     break;
                 case op3:
                     printf("**********Dar de baja un Producto**********\n\n");
-                    int codigo = 0;
-                    int posicionRegistro = 0;
-                    Articulo product;
-                    leerEntero("Ingrese el codigo del articulo que quiere dar de baja (-1 para salir)", &codigo);
-                    if (codigo == SALIDA)
+                    int resultadoBaja = bajaProducto(archivoProductos);
+                    if (resultadoBaja == SALIDA)
                     {
-                        printf("No se hizo la baja  (cancelado)\n");
+                        printf("No se dio de baja el producto (cancelado)\n");
                     }
-                    posicionRegistro = buscarPosicionRegistroProductos(archivoProductos, codigo);
-                    if (posicionRegistro == NO_ENCONTRADO)
+                    else if (resultadoBaja == NO_ENCONTRADO)
                     {
-                        printf("No se ha encontrado el producto\n");
+                        printf("No se ha encontrado el producto en la base de datos \n");
                     }
                     else
                     {
-                        fseek(archivoProductos, posicionRegistro * sizeof(Articulo), SEEK_SET);
-                        fread(&product, sizeof(Articulo), 1, archivoProductos);
-                        product.estado = INACTIVO; // se trabaja una BAJA LOGICA, no estamos borrando por completo el registro ya que no hay manera de deshacerlo. la buena practica es desactivar registros, no eliminarlos por completo
-                        fseek(archivoProductos, posicionRegistro * sizeof(Articulo), SEEK_SET);
-                        fwrite(&product, sizeof(Articulo), 1, archivoProductos);
-                        printf("Producto desactivado correctamente\n");
+                        printf("Producto dado de baja exitosamente");
                     }
-                    break;
-                default:
-                    printf("Error: Fuera de rango. Reintente.\n");
+
                     break;
                 }
 
@@ -1265,8 +1312,6 @@ void AltaGestor(FILE *archivoUsuarios)
     {
         printf("\n¡Registro exitoso!\n");
     }
-
-    pausa();
 }
 
 // BAJA GESTOR: baja logica.
